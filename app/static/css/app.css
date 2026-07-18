@@ -1,0 +1,125 @@
+[x-cloak] { display: none !important; }
+
+:root {
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+html, body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+.font-mono-tab { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+.transition-fast { transition: background-color .15s ease, border-color .15s ease, color .15s ease, opacity .15s ease; }
+
+h1, h2, h3, h4 { letter-spacing: -0.015em; }
+
+/* Scrollbar dark */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.7);
+    cursor: pointer;
+}
+
+@keyframes fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.fade-in { animation: fade-in .35s ease both; }
+
+/* Custom Animates */
+.animate-spin-slow {
+    animation: spin 8s linear infinite;
+}
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* -------------------- ÍCONES ANIMADOS DOS AVISOS -------------------- */
+@keyframes anim-shake {
+    0%, 100% { transform: rotate(0deg); }
+    20% { transform: rotate(-12deg); }
+    40% { transform: rotate(10deg); }
+    60% { transform: rotate(-8deg); }
+    80% { transform: rotate(6deg); }
+}
+.anim-shake { animation: anim-shake 1.6s ease-in-out infinite; transform-origin: 50% 20%; }
+
+@keyframes anim-bounce-soft {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
+.anim-bounce-soft { animation: anim-bounce-soft 2s ease-in-out infinite; }
+
+/* -------------------- CHAT: entrada suave de mensagens -------------------- */
+@keyframes chat-msg-in {
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.chat-msg-in { animation: chat-msg-in .25s ease both; }
+
+/* ============================================================
+   TEMA CLARO
+   ============================================================
+   O projeto inteiro é escrito com classes Tailwind fixas (bg-slate-900,
+   text-slate-200 etc.) — não há variantes `dark:`. Em vez de reescrever
+   toda classe de cada template para um par claro/escuro, alternamos um
+   atributo `data-tema` na tag <html> (ver `aplicarTema()` em app.js) e
+   sobrescrevemos aqui, com maior especificidade, as classes mais usadas.
+   É um "reskin" pragmático: cobre a esmagadora maioria da interface sem
+   exigir tocar em cada um dos templates individualmente.
+*/
+html[data-tema="claro"] body { background-color: #f8fafc; }
+
+html[data-tema="claro"] .bg-slate-950 { background-color: #f8fafc !important; }
+html[data-tema="claro"] .bg-slate-950\/70 { background-color: rgb(248 250 252 / 0.85) !important; }
+html[data-tema="claro"] .bg-slate-950\/75 { background-color: rgb(248 250 252 / 0.9) !important; }
+html[data-tema="claro"] .bg-slate-950\/80 { background-color: rgb(15 23 42 / 0.45) !important; }
+html[data-tema="claro"] .bg-slate-900 { background-color: #ffffff !important; }
+html[data-tema="claro"] .bg-slate-800 { background-color: #f1f5f9 !important; }
+html[data-tema="claro"] .bg-slate-800\/40 { background-color: rgb(241 245 249 / 0.6) !important; }
+html[data-tema="claro"] .bg-slate-800\/50 { background-color: rgb(241 245 249 / 0.7) !important; }
+html[data-tema="claro"] .bg-slate-800\/60 { background-color: rgb(241 245 249 / 0.8) !important; }
+html[data-tema="claro"] .bg-slate-700 { background-color: #e2e8f0 !important; }
+html[data-tema="claro"] .bg-slate-700\/50 { background-color: rgb(226 232 240 / 0.7) !important; }
+html[data-tema="claro"] .bg-slate-700\/80 { background-color: rgb(226 232 240 / 0.9) !important; }
+html[data-tema="claro"] .bg-slate-700\/90 { background-color: rgb(226 232 240 / 0.95) !important; }
+html[data-tema="claro"] .bg-slate-600 { background-color: #cbd5e1 !important; }
+html[data-tema="claro"] .bg-slate-400 { background-color: #94a3b8 !important; }
+html[data-tema="claro"] .from-slate-950,
+html[data-tema="claro"] .from-slate-900 { --tw-gradient-from: #f8fafc !important; }
+html[data-tema="claro"] .via-slate-900 { --tw-gradient-via: #f1f5f9 !important; }
+
+html[data-tema="claro"] .border-slate-900 { border-color: #e2e8f0 !important; }
+html[data-tema="claro"] .border-slate-800 { border-color: #e2e8f0 !important; }
+html[data-tema="claro"] .border-slate-700 { border-color: #cbd5e1 !important; }
+html[data-tema="claro"] .border-slate-600 { border-color: #94a3b8 !important; }
+html[data-tema="claro"] .divide-slate-800 > * + * { border-color: #e2e8f0 !important; }
+
+html[data-tema="claro"] .text-white,
+html[data-tema="claro"] .text-slate-100 { color: #0f172a !important; }
+html[data-tema="claro"] .text-slate-950 { color: #0f172a !important; }
+html[data-tema="claro"] .text-slate-200,
+html[data-tema="claro"] .text-slate-300 { color: #1e293b !important; }
+html[data-tema="claro"] .text-slate-400 { color: #475569 !important; }
+html[data-tema="claro"] .text-slate-500 { color: #64748b !important; }
+html[data-tema="claro"] .text-slate-600 { color: #94a3b8 !important; }
+html[data-tema="claro"] .text-slate-700 { color: #cbd5e1 !important; }
+html[data-tema="claro"] .placeholder-slate-500::placeholder { color: #94a3b8 !important; }
+
+html[data-tema="claro"] .hover\:bg-slate-800:hover { background-color: #f1f5f9 !important; }
+html[data-tema="claro"] .hover\:bg-slate-700:hover { background-color: #e2e8f0 !important; }
+html[data-tema="claro"] .hover\:text-slate-200:hover,
+html[data-tema="claro"] .hover\:text-slate-300:hover { color: #0f172a !important; }
+
+html[data-tema="claro"] ::-webkit-scrollbar-thumb { background: #cbd5e1; }
+html[data-tema="claro"] ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+html[data-tema="claro"] input[type="date"]::-webkit-calendar-picker-indicator,
+html[data-tema="claro"] input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.4);
+}

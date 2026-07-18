@@ -1,0 +1,169 @@
+                <div x-show="modalAvisoAberto" class="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" style="display: none;">
+                    <div @click="fecharModalAviso" class="fixed inset-0 bg-slate-950/80"></div>
+
+                    <div class="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 w-full max-w-2xl overflow-hidden relative z-10">
+                        <div class="bg-slate-900 px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="p-2 rounded-lg text-indigo-400 bg-indigo-500/10"><i class="fa-solid" :class="editandoAviso ? 'fa-pen-to-square' : 'fa-plus'"></i></span>
+                                <h2 class="text-lg font-bold text-slate-100" x-text="editandoAviso ? 'Editar Aviso Geral' : 'Criar Novo Aviso Geral'"></h2>
+                            </div>
+                            <button @click="fecharModalAviso" class="text-slate-500 hover:text-slate-300 transition-fast"><i class="fa-solid fa-xmark text-lg"></i></button>
+                        </div>
+
+                        <form @submit.prevent="salvarAviso" class="p-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div class="col-span-1 md:col-span-2">
+                                    <label class="block text-sm font-semibold text-slate-300 mb-1.5">Título do Alerta / Aviso</label>
+                                    <input
+                                        type="text"
+                                        x-model="avisoForm.titulo"
+                                        placeholder="Ex: Instabilidade nos Servidores Regionais"
+                                        class="w-full border border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-800/60 text-slate-100 placeholder-slate-500 transition-fast"
+                                        required
+                                    />
+                                </div>
+                                <div class="col-span-1 md:col-span-2">
+                                    <label class="block text-sm font-semibold text-slate-300 mb-1.5">Mensagem / Descrição Completa</label>
+                                    <textarea
+                                        x-model="avisoForm.descricao"
+                                        rows="3"
+                                        placeholder="Descreva detalhes adicionais para o público..."
+                                        class="w-full border border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-800/60 text-slate-100 placeholder-slate-500 transition-fast"
+                                    ></textarea>
+                                </div>
+
+                                <div class="col-span-1 md:col-span-2">
+                                    <label class="block text-sm font-semibold text-slate-300 mb-2">Tipo de aviso</label>
+                                    <div class="flex flex-wrap gap-2">
+                                        <button type="button" @click="avisoForm.tipo = 'informativo'"
+                                            class="py-2 px-4 rounded-lg text-sm font-semibold transition-fast flex items-center gap-2"
+                                            :class="avisoForm.tipo === 'informativo' ? 'bg-indigo-600 text-white' : 'bg-slate-800/60 border border-slate-700 text-slate-400 hover:text-slate-200'">
+                                            <i class="fa-solid fa-bullhorn text-xs"></i> Informativo
+                                        </button>
+                                        <button type="button" @click="avisoForm.tipo = 'atencao'"
+                                            class="py-2 px-4 rounded-lg text-sm font-semibold transition-fast flex items-center gap-2"
+                                            :class="avisoForm.tipo === 'atencao' ? 'bg-amber-500 text-slate-950' : 'bg-slate-800/60 border border-slate-700 text-slate-400 hover:text-slate-200'">
+                                            <i class="fa-solid fa-circle-exclamation text-xs"></i> Atenção
+                                        </button>
+                                        <button type="button" @click="avisoForm.tipo = 'urgente'"
+                                            class="py-2 px-4 rounded-lg text-sm font-semibold transition-fast flex items-center gap-2"
+                                            :class="avisoForm.tipo === 'urgente' ? 'bg-rose-600 text-white' : 'bg-slate-800/60 border border-slate-700 text-slate-400 hover:text-slate-200'">
+                                            <i class="fa-solid fa-triangle-exclamation text-xs"></i> Urgente
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="col-span-1 md:col-span-2">
+                                    <label class="block text-sm font-semibold text-slate-300 mb-2">Imagem (opcional)</label>
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-24 h-16 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0">
+                                            <img x-show="avisoForm.imagemUrl" :src="avisoForm.imagemUrl" class="w-full h-full object-cover" />
+                                            <i x-show="!avisoForm.imagemUrl" class="fa-regular fa-image text-slate-600"></i>
+                                        </div>
+                                        <div class="flex-1">
+                                            <input type="file" accept="image/png,image/jpeg,image/webp" @change="enviarImagemAviso($event)"
+                                                class="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-700 file:text-white hover:file:bg-slate-600 file:cursor-pointer cursor-pointer" />
+                                            <p class="text-[11px] text-slate-500 mt-1.5">
+                                                <span x-show="!enviandoImagemAviso"><i class="fa-solid fa-circle-info mr-1"></i>Otimizada automaticamente ao enviar.</span>
+                                                <span x-show="enviandoImagemAviso" class="text-indigo-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Enviando e otimizando...</span>
+                                            </p>
+                                        </div>
+                                        <button type="button" x-show="avisoForm.imagemUrl" @click="avisoForm.imagemUrl = null" class="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-fast shrink-0" title="Remover imagem">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="col-span-1 md:col-span-2">
+                                    <label class="block text-sm font-semibold text-slate-300 mb-2">Como definir a vigência?</label>
+                                    <div class="flex bg-slate-800/60 border border-slate-700 p-1.5 rounded-xl w-max">
+                                        <button
+                                            type="button"
+                                            @click="avisoForm.modoDuracao = 'dias'"
+                                            class="py-2 px-4 rounded-lg text-sm font-semibold transition-fast flex items-center gap-2"
+                                            :class="avisoForm.modoDuracao === 'dias' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'"
+                                        >
+                                            <i class="fa-regular fa-calendar text-xs"></i> Período (dias)
+                                        </button>
+                                        <button
+                                            type="button"
+                                            @click="avisoForm.modoDuracao = 'horas'"
+                                            class="py-2 px-4 rounded-lg text-sm font-semibold transition-fast flex items-center gap-2"
+                                            :class="avisoForm.modoDuracao === 'horas' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'"
+                                        >
+                                            <i class="fa-regular fa-hourglass-half text-xs"></i> Duração (horas)
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <template x-if="avisoForm.modoDuracao === 'dias'">
+                                    <div class="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-5">
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-300 mb-1.5">Vigência - Início</label>
+                                            <input
+                                                type="date"
+                                                x-model="avisoForm.inicio"
+                                                class="w-full border border-slate-700 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 bg-slate-800/60 text-slate-100 transition-fast"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-300 mb-1.5">Vigência - Fim</label>
+                                            <input
+                                                type="date"
+                                                x-model="avisoForm.fim"
+                                                :min="avisoForm.inicio || null"
+                                                class="w-full border border-slate-700 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 bg-slate-800/60 text-slate-100 transition-fast"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <template x-if="avisoForm.modoDuracao === 'horas'">
+                                    <div class="col-span-1 md:col-span-2">
+                                        <label class="block text-sm font-semibold text-slate-300 mb-1.5">Duração (em horas)</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            step="1"
+                                            x-model.number="avisoForm.duracaoHoras"
+                                            placeholder="Ex: 2"
+                                            class="w-full md:w-64 border border-slate-700 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 bg-slate-800/60 text-slate-100 placeholder-slate-500 transition-fast"
+                                            required
+                                        />
+                                        <p class="text-xs text-slate-500 mt-2">
+                                            <i class="fa-solid fa-circle-info mr-1"></i>
+                                            A contagem começa agora, assim que você salvar. Encerramento previsto: <span class="font-semibold text-slate-300" x-text="previsaoFimHoras()"></span>
+                                        </p>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <template x-if="formErrorAviso">
+                                <div class="mt-5 flex items-center gap-2 text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl px-3.5 py-2.5 text-sm">
+                                    <i class="fa-solid fa-circle-exclamation"></i>
+                                    <span x-text="formErrorAviso"></span>
+                                </div>
+                            </template>
+
+                            <div class="mt-6 pt-4 border-t border-slate-800 flex gap-3 justify-end">
+                                <button
+                                    type="button"
+                                    @click="fecharModalAviso"
+                                    class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-6 py-2.5 rounded-xl transition-fast"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    :disabled="salvandoAviso"
+                                    class="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold px-6 py-2.5 rounded-xl transition-fast flex items-center gap-2"
+                                >
+                                    <i class="fa-solid fa-spinner fa-spin" x-show="salvandoAviso"></i>
+                                    <span x-text="salvandoAviso ? 'Salvando...' : 'Salvar Aviso'"></span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>

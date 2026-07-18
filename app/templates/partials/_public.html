@@ -1,0 +1,226 @@
+                <template x-if="page === 'public'">
+                    <div class="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full flex-grow fade-in">
+
+                        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+                            <div>
+                                <span class="bg-emerald-500/10 text-emerald-400 font-bold text-xs uppercase px-3 py-1.5 rounded-full flex items-center gap-2 w-max">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Área Restrita a Usuários Aprovados
+                                </span>
+                                <h1 class="text-2xl sm:text-3xl font-extrabold text-white mt-2">Central de Prazos &amp; Avisos</h1>
+                                <p class="text-slate-500 text-sm sm:text-base">Cidades atendidas, clima atual e comunicados importantes.</p>
+                            </div>
+
+                            <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex items-center gap-3">
+                                <div class="bg-indigo-500/10 text-indigo-400 p-3 rounded-xl">
+                                    <i class="fa-regular fa-clock text-xl animate-pulse"></i>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Hora Oficial Local</p>
+                                    <p class="text-lg font-mono-tab font-bold text-slate-100" x-text="dataHora"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ===== CARROSSEL DE AVISOS (ANIMADO) ===== -->
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Avisos &amp; Informativos</h2>
+                            <button
+                                @click="abrirModalAviso"
+                                class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-fast flex items-center gap-2"
+                            >
+                                <i class="fa-solid fa-plus"></i> Novo Informativo
+                            </button>
+                        </div>
+                        <div x-show="avisosPublicos().length > 0" class="relative bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden mb-8">
+                            <div class="relative min-h-[132px]">
+                                <template x-for="(aviso, i) in avisosPublicos()" :key="aviso.id">
+                                    <div
+                                        x-show="carrosselIndex === (i % avisosPublicos().length)"
+                                        x-transition:enter="transition ease-out duration-700"
+                                        x-transition:enter-start="opacity-0 translate-x-4"
+                                        x-transition:enter-end="opacity-100 translate-x-0"
+                                        x-transition:leave="transition ease-in duration-500"
+                                        x-transition:leave-start="opacity-100 translate-x-0"
+                                        x-transition:leave-end="opacity-0 -translate-x-4"
+                                        class="p-6"
+                                    >
+                                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                            <div class="flex items-start gap-4 min-w-0">
+                                                <img x-show="aviso.imagemUrl" :src="aviso.imagemUrl" class="w-20 h-20 rounded-xl object-cover border border-slate-800 shrink-0" />
+                                                <div class="space-y-1 min-w-0">
+                                                <div class="flex items-center gap-2 flex-wrap">
+                                                    <span class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" :class="corIconeAviso(aviso)">
+                                                        <i class="fa-solid" :class="[iconeAviso(aviso), animacaoIconeAviso(aviso)]"></i>
+                                                    </span>
+                                                    <h3 class="text-lg font-bold text-white" x-text="aviso.titulo"></h3>
+                                                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
+                                                        :class="{
+                                                            'bg-emerald-500/10 text-emerald-400': aviso.status === 'Ativo',
+                                                            'bg-rose-500/10 text-rose-400': aviso.status === 'Expirado',
+                                                            'bg-amber-500/10 text-amber-400': aviso.status === 'Aguardando'
+                                                        }" x-text="aviso.status"></span>
+                                                    <span class="text-[11px] text-slate-500">por <span class="font-semibold" x-text="aviso.autorNome"></span></span>
+                                                </div>
+                                                <p class="text-slate-400 text-sm" x-text="aviso.descricao || 'Nenhum detalhe adicional informado.'"></p>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center gap-2 shrink-0">
+                                                <div class="text-sm font-mono-tab bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700 text-slate-400 flex items-center gap-2">
+                                                    <i class="fa-regular fa-calendar"></i>
+                                                    <template x-if="aviso.modoDuracao === 'horas'">
+                                                        <span x-text="formatarData(aviso.inicio, true)"></span>
+                                                    </template>
+                                                    <template x-if="aviso.modoDuracao !== 'horas'">
+                                                        <span x-text="formatarData(aviso.inicio) + ' - ' + formatarData(aviso.fim)"></span>
+                                                    </template>
+                                                </div>
+                                                <template x-if="podeGerenciarAviso(aviso)">
+                                                    <div class="flex items-center gap-1">
+                                                        <button @click="editarAviso(aviso)" class="p-2 text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-fast" title="Editar"><i class="fa-solid fa-pen text-xs"></i></button>
+                                                        <button @click="excluirAviso(aviso.id)" class="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-fast" title="Excluir"><i class="fa-solid fa-trash text-xs"></i></button>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+
+                                        <div class="mt-4 pt-4 border-t border-slate-800 space-y-1.5">
+                                            <div class="flex justify-between text-xs">
+                                                <span class="text-slate-500" x-text="aviso.status === 'Expirado' ? 'Vigência encerrada' : (aviso.status === 'Aguardando' ? 'Ainda não iniciado' : 'Tempo decorrido da vigência')"></span>
+                                                <span class="font-bold text-slate-300" x-text="obterPorcentagemAviso(aviso) + '%'"></span>
+                                            </div>
+                                            <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-700">
+                                                <div class="h-full rounded-full transition-all duration-500"
+                                                     :style="'width: ' + obterPorcentagemAviso(aviso) + '%'"
+                                                     :class="obterCorBarraProgresso(obterPorcentagemAviso(aviso))">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <div class="flex items-center justify-center gap-1.5 pb-4" x-show="avisosPublicos().length > 1">
+                                <template x-for="(aviso, i) in avisosPublicos()" :key="'dot-' + aviso.id">
+                                    <button
+                                        @click="carrosselIndex = i"
+                                        class="h-2 rounded-full transition-all duration-300"
+                                        :class="carrosselIndex === i ? 'bg-indigo-500 w-6' : 'bg-slate-700 w-2 hover:bg-slate-600'"
+                                    ></button>
+                                </template>
+                            </div>
+                        </div>
+                        <div x-show="avisosPublicos().length === 0" class="text-center text-slate-500 py-6 bg-slate-900 rounded-2xl border border-slate-800 mb-8">
+                            <i class="fa-solid fa-check-circle text-2xl mb-1 text-emerald-500/60 block"></i>
+                            <span class="text-sm">Não existem avisos ou alertas gerais pendentes.</span>
+                        </div>
+
+                        <!-- ===== BUSCA + TROCA CIDADES/CHAT ===== -->
+                        <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+                            <div class="relative max-w-md w-full">
+                                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Filtrar Cidades Atendidas</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-slate-500">
+                                        <i class="fa-solid fa-magnifying-glass text-sm"></i>
+                                    </span>
+                                    <input
+                                        type="text"
+                                        placeholder="Pesquise por nome de cidade ou filial..."
+                                        x-model="searchQuery"
+                                        class="w-full pl-11 pr-10 py-3 bg-slate-900 border border-slate-800 rounded-2xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                                    />
+                                    <button x-show="searchQuery" @click="searchQuery = ''" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-500 hover:text-slate-300">
+                                        <i class="fa-solid fa-circle-xmark"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="flex bg-slate-900 border border-slate-800 p-1.5 rounded-2xl w-max">
+                                <button
+                                    @click="publicTab = 'cidades'"
+                                    class="py-2 px-4 rounded-xl text-sm font-semibold transition-fast flex items-center gap-2"
+                                    :class="publicTab === 'cidades' ? 'bg-slate-800 text-blue-400' : 'text-slate-500 hover:text-slate-300'"
+                                >
+                                    <i class="fa-solid fa-map-location-dot"></i> Cidades
+                                </button>
+                                <button
+                                    @click="publicTab = 'chat'; carregarChat()"
+                                    class="py-2 px-4 rounded-xl text-sm font-semibold transition-fast flex items-center gap-2 relative"
+                                    :class="publicTab === 'chat' ? 'bg-slate-800 text-indigo-400' : 'text-slate-500 hover:text-slate-300'"
+                                >
+                                    <i class="fa-solid fa-comments"></i> Chat Interno
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- ===== GRID DE CIDADES (CARDS) ===== -->
+                        <div x-show="publicTab === 'cidades'">
+                            <div class="grid grid-cols-1 gap-6" :class="[classeGridCards(), classeEspacamentoCards()]">
+                                <template x-for="(cidade, idxCidade) in cidadesFiltradas()" :key="cidade.id">
+                                    <button
+                                        @click="abrirDetalheCidade(cidade)"
+                                        class="text-left bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 hover:border-indigo-500/60 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/5 transition-all duration-300 flex flex-col fade-in mx-auto w-full"
+                                        :class="classeLarguraCards()"
+                                        :style="'animation-delay: ' + (idxCidade * 80) + 'ms'"
+                                    >
+                                        <div class="relative h-36 bg-slate-800">
+                                            <img x-show="cidade.imagemUrl" :src="cidade.imagemUrl" class="w-full h-full object-cover" />
+                                            <div x-show="!cidade.imagemUrl" class="w-full h-full flex items-center justify-center text-slate-700">
+                                                <i class="fa-solid fa-city text-4xl"></i>
+                                            </div>
+
+                                            <span class="absolute top-3 right-3 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider backdrop-blur"
+                                                :class="cidade.perfil === 'matriz' ? 'bg-blue-500/80 text-white' : 'bg-slate-700/80 text-slate-100'"
+                                                x-text="cidade.perfil === 'matriz' ? rotulosCards.matriz : rotulosCards.filial"></span>
+
+                                            <div
+                                                x-show="climaPorCidade[cidade.id] && climaPorCidade[cidade.id].disponivel"
+                                                class="absolute top-3 left-3 bg-slate-950/80 backdrop-blur px-2.5 py-1 rounded-full flex items-center gap-1.5 text-xs text-slate-100 font-semibold"
+                                            >
+                                                <i class="fa-solid" :class="climaPorCidade[cidade.id] ? climaPorCidade[cidade.id].icone : 'fa-cloud'"></i>
+                                                <span x-text="climaPorCidade[cidade.id] ? Math.round(climaPorCidade[cidade.id].temperatura) + '°C' : ''"></span>
+                                            </div>
+                                        </div>
+
+                                        <div :class="classePaddingCards()" class="flex flex-col flex-grow">
+                                            <h3 class="font-extrabold text-white tracking-tight" :class="estiloCards.tamanhoFonte === 'lg' ? 'text-xl' : 'text-lg'" x-text="cidade.nome"></h3>
+                                            <p class="text-slate-400 mt-1.5 line-clamp-2 flex-grow" :class="classeFonteCards()" x-text="cidade.observacao || 'Sem avisos específicos para esta localidade.'"></p>
+
+                                            <template x-if="cidade.modoPrazo !== 'semData' && campoVisivel('prazo')">
+                                                <div class="mt-4 space-y-1.5">
+                                                    <div class="flex justify-between items-center text-[10px] font-bold uppercase tracking-wide gap-2">
+                                                        <span class="text-amber-400 flex items-center gap-1 truncate"><i class="fa-solid fa-triangle-exclamation shrink-0"></i> <span x-text="rotulosCards.prazo" class="truncate"></span></span>
+                                                        <span class="px-2 py-0.5 rounded-full shrink-0" :class="corSituacao(obterPorcentagemPrazo(cidade.prazoInicio, cidade.prazoFim))" x-text="rotuloSituacao(obterPorcentagemPrazo(cidade.prazoInicio, cidade.prazoFim))"></span>
+                                                    </div>
+                                                    <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-700">
+                                                        <div class="h-full rounded-full transition-all duration-500"
+                                                             :style="'width: ' + obterPorcentagemPrazo(cidade.prazoInicio, cidade.prazoFim) + '%'"
+                                                             :class="obterCorBarraProgresso(obterPorcentagemPrazo(cidade.prazoInicio, cidade.prazoFim))">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                            <template x-if="cidade.modoPrazo === 'semData' && campoVisivel('prazo')">
+                                                <div class="mt-4 text-[10px] font-bold uppercase tracking-wide text-emerald-400 flex items-center gap-1.5">
+                                                    <i class="fa-solid fa-circle-check"></i> <span x-text="rotulosCards.semPrazo"></span>
+                                                </div>
+                                            </template>
+
+                                            <span class="mt-4 text-xs text-indigo-400 font-semibold flex items-center gap-1.5">
+                                                Ver detalhes completos <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                                            </span>
+                                        </div>
+                                    </button>
+                                </template>
+                                <div x-show="cidadesFiltradas().length === 0" class="col-span-full text-center text-slate-500 py-12 bg-slate-900 rounded-2xl border border-slate-800">
+                                    <i class="fa-solid fa-circle-exclamation text-3xl mb-2 text-slate-700 block animate-bounce"></i>
+                                    Nenhuma cidade encontrada para os filtros ou cadastrada.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ===== CHAT INTERNO ===== -->
+                        <div x-show="publicTab === 'chat'">
+                            {% include "partials/_chat.html" %}
+                        </div>
+                    </div>
+                </template>

@@ -1,0 +1,133 @@
+                <div x-show="modalPerfilAberto" class="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" style="display: none;">
+                    <div @click="fecharModalPerfil" class="fixed inset-0 bg-slate-950/80"></div>
+
+                    <div class="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 w-full max-w-xl overflow-hidden relative z-10">
+                        <div class="bg-slate-900 px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="p-2 rounded-lg text-indigo-400 bg-indigo-500/10"><i class="fa-solid fa-user-gear"></i></span>
+                                <h2 class="text-lg font-bold text-slate-100">Meu Perfil</h2>
+                            </div>
+                            <button @click="fecharModalPerfil" class="text-slate-500 hover:text-slate-300 transition-fast"><i class="fa-solid fa-xmark text-lg"></i></button>
+                        </div>
+
+                        <!-- FOTO + ABAS -->
+                        <div class="px-6 pt-5 flex items-center gap-4">
+                            <div class="relative shrink-0">
+                                <div class="w-16 h-16 rounded-2xl overflow-hidden bg-slate-800 border border-slate-700 flex items-center justify-center text-lg font-bold text-slate-400">
+                                    <img x-show="usuarioAtual.fotoUrl" :src="usuarioAtual.fotoUrl" class="w-full h-full object-cover" />
+                                    <span x-show="!usuarioAtual.fotoUrl" x-text="iniciaisUsuario(usuarioAtual)"></span>
+                                </div>
+                                <label class="absolute -bottom-1.5 -right-1.5 w-6 h-6 rounded-full bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center cursor-pointer transition-fast" title="Trocar foto">
+                                    <i class="fa-solid fa-camera text-[10px] text-white" x-show="!enviandoFotoPerfil"></i>
+                                    <i class="fa-solid fa-spinner fa-spin text-[10px] text-white" x-show="enviandoFotoPerfil"></i>
+                                    <input type="file" accept="image/png,image/jpeg,image/webp" class="hidden" @change="enviarFotoPerfil($event)" />
+                                </label>
+                            </div>
+                            <div>
+                                <p class="font-bold text-slate-100" x-text="usuarioAtual.nome || usuarioAtual.username"></p>
+                                <p class="text-xs text-slate-500">@<span x-text="usuarioAtual.username"></span> · <span x-text="usuarioAtual.role === 'admin' ? 'Administrador' : 'Usuário'"></span></p>
+                            </div>
+                        </div>
+
+                        <div class="px-6 mt-5 flex gap-1 border-b border-slate-800">
+                            <button @click="perfilTab = 'dados'" class="px-4 py-2.5 text-sm font-semibold border-b-2 transition-fast" :class="perfilTab === 'dados' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-300'">Dados</button>
+                            <button @click="perfilTab = 'senha'" class="px-4 py-2.5 text-sm font-semibold border-b-2 transition-fast" :class="perfilTab === 'senha' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-300'">Senha</button>
+                            <button @click="perfilTab = 'sessoes'" class="px-4 py-2.5 text-sm font-semibold border-b-2 transition-fast" :class="perfilTab === 'sessoes' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-300'">Sessões Ativas</button>
+                        </div>
+
+                        <!-- ABA DADOS -->
+                        <div x-show="perfilTab === 'dados'" class="p-6">
+                            <form @submit.prevent="salvarPerfil" class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-300 mb-1.5">Nome de exibição</label>
+                                    <input type="text" x-model="perfilForm.nome" maxlength="120" placeholder="Como prefere ser chamado(a)"
+                                        class="w-full border border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-800/60 text-slate-100 placeholder-slate-500 transition-fast" />
+                                    <p class="text-[11px] text-slate-500 mt-1">Seu usuário de login (<span class="font-mono-tab" x-text="usuarioAtual.username"></span>) não pode ser alterado por aqui.</p>
+                                </div>
+                                <template x-if="formErrorPerfil">
+                                    <div class="flex items-center gap-2 text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl px-3.5 py-2.5 text-sm">
+                                        <i class="fa-solid fa-circle-exclamation"></i>
+                                        <span x-text="formErrorPerfil"></span>
+                                    </div>
+                                </template>
+                                <div class="flex items-center gap-3 pt-1">
+                                    <button type="button" @click="alternarTema" class="px-4 py-2.5 rounded-xl text-sm font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 transition-fast flex items-center gap-2">
+                                        <i class="fa-solid" :class="usuarioAtual.tema === 'claro' ? 'fa-moon' : 'fa-sun'"></i>
+                                        <span x-text="usuarioAtual.tema === 'claro' ? 'Usar tema escuro' : 'Usar tema claro'"></span>
+                                    </button>
+                                    <button type="submit" :disabled="salvandoPerfil" class="ml-auto bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-semibold px-6 py-2.5 rounded-xl transition-fast">
+                                        Salvar
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- ABA SENHA -->
+                        <div x-show="perfilTab === 'senha'" class="p-6">
+                            <form @submit.prevent="salvarSenha" class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-300 mb-1.5">Senha atual</label>
+                                    <input type="password" x-model="senhaForm.senhaAtual" autocomplete="current-password"
+                                        class="w-full border border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-800/60 text-slate-100 transition-fast" />
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-300 mb-1.5">Nova senha</label>
+                                        <input type="password" x-model="senhaForm.novaSenha" autocomplete="new-password" minlength="6"
+                                            class="w-full border border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-800/60 text-slate-100 transition-fast" />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold text-slate-300 mb-1.5">Confirmar nova senha</label>
+                                        <input type="password" x-model="senhaForm.confirmarSenha" autocomplete="new-password" minlength="6"
+                                            class="w-full border border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-800/60 text-slate-100 transition-fast" />
+                                    </div>
+                                </div>
+                                <template x-if="formErrorSenha">
+                                    <div class="flex items-center gap-2 text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl px-3.5 py-2.5 text-sm">
+                                        <i class="fa-solid fa-circle-exclamation"></i>
+                                        <span x-text="formErrorSenha"></span>
+                                    </div>
+                                </template>
+                                <div class="flex justify-end pt-1">
+                                    <button type="submit" :disabled="salvandoPerfil" class="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-semibold px-6 py-2.5 rounded-xl transition-fast">
+                                        Trocar senha
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- ABA SESSÕES ATIVAS -->
+                        <div x-show="perfilTab === 'sessoes'" class="p-6">
+                            <p class="text-xs text-slate-500 mb-4">
+                                Cada linha é um navegador/dispositivo diferente onde você está logado — nenhum é
+                                compartilhado entre pessoas. Se não reconhece algum, encerre-o.
+                            </p>
+                            <div class="space-y-2 max-h-72 overflow-y-auto">
+                                <template x-for="sessao in sessoesAtivas" :key="sessao.id">
+                                    <div class="flex items-center justify-between gap-3 bg-slate-800/60 border border-slate-700 rounded-xl px-4 py-3">
+                                        <div class="flex items-center gap-3 min-w-0">
+                                            <i class="fa-solid fa-display text-slate-500"></i>
+                                            <div class="min-w-0">
+                                                <p class="text-sm font-semibold text-slate-200 truncate max-w-[14rem]" x-text="sessao.userAgent || 'Dispositivo desconhecido'"></p>
+                                                <p class="text-[11px] text-slate-500">
+                                                    <span x-text="sessao.ip"></span> · último acesso <span x-text="formatarData(sessao.ultimoAcesso.slice(0,10), true)"></span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-2 shrink-0">
+                                            <span x-show="sessao.atual" class="text-[10px] font-bold uppercase text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-full">Este dispositivo</span>
+                                            <button @click="encerrarSessao(sessao)" class="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-fast" title="Encerrar sessão">
+                                                <i class="fa-solid fa-right-from-bracket"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </template>
+                                <p x-show="!carregandoSessoes && sessoesAtivas.length === 0" class="text-center text-slate-500 text-sm py-6">Nenhuma sessão ativa encontrada.</p>
+                                <p x-show="carregandoSessoes" class="text-center text-slate-500 text-sm py-6"><i class="fa-solid fa-spinner fa-spin mr-1.5"></i>Carregando...</p>
+                            </div>
+                            <button x-show="sessoesAtivas.length > 1" @click="encerrarOutrasSessoes" class="mt-4 w-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-semibold px-4 py-2.5 rounded-xl transition-fast text-sm">
+                                <i class="fa-solid fa-shield-halved mr-1.5"></i> Encerrar todas as outras sessões
+                            </button>
+                        </div>
+                    </div>
+                </div>

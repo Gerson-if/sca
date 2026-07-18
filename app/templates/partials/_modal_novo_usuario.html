@@ -1,0 +1,46 @@
+                <div x-show="modalNovoUsuarioAberto" class="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" style="display: none;">
+                    <div @click="fecharModalNovoUsuario" class="fixed inset-0 bg-slate-950/80"></div>
+
+                    <div class="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 w-full max-w-md overflow-hidden relative z-10">
+                        <div class="bg-slate-900 px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="p-2 rounded-lg text-emerald-400 bg-emerald-500/10"><i class="fa-solid fa-user-plus"></i></span>
+                                <h2 class="text-lg font-bold text-slate-100">Novo Usuário</h2>
+                            </div>
+                            <button @click="fecharModalNovoUsuario" class="text-slate-500 hover:text-slate-300 transition-fast"><i class="fa-solid fa-xmark text-lg"></i></button>
+                        </div>
+
+                        <form @submit.prevent="criarUsuario" class="p-6 space-y-4">
+                            <p class="text-xs text-slate-500 -mt-1">
+                                Criado diretamente pelo admin: já nasce <span class="font-semibold text-emerald-400">aprovado</span>, sem passar pela fila de aprovação.
+                            </p>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-300 mb-1.5">Usuário (login)</label>
+                                <input type="text" x-model="novoUsuarioForm.username" placeholder="ex: joao.silva"
+                                    class="w-full border border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-800/60 text-slate-100 placeholder-slate-500 transition-fast" required />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-300 mb-1.5">Senha provisória</label>
+                                <input type="password" x-model="novoUsuarioForm.password" placeholder="mínimo 6 caracteres"
+                                    class="w-full border border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-800/60 text-slate-100 placeholder-slate-500 transition-fast" required />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-300 mb-2">Papel</label>
+                                <div class="flex bg-slate-800/60 border border-slate-700 p-1.5 rounded-xl w-max">
+                                    <button type="button" @click="novoUsuarioForm.role = 'usuario'" class="py-2 px-4 rounded-lg text-sm font-semibold transition-fast" :class="novoUsuarioForm.role === 'usuario' ? 'bg-slate-700 text-slate-100' : 'text-slate-500 hover:text-slate-300'">Usuário</button>
+                                    <button type="button" @click="novoUsuarioForm.role = 'admin'" class="py-2 px-4 rounded-lg text-sm font-semibold transition-fast" :class="novoUsuarioForm.role === 'admin' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-300'">Administrador</button>
+                                </div>
+                            </div>
+                            <template x-if="formErrorNovoUsuario">
+                                <div class="flex items-center gap-2 text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl px-3.5 py-2.5 text-sm">
+                                    <i class="fa-solid fa-circle-exclamation"></i>
+                                    <span x-text="formErrorNovoUsuario"></span>
+                                </div>
+                            </template>
+                            <div class="pt-2 border-t border-slate-800 flex gap-3 justify-end">
+                                <button type="button" @click="fecharModalNovoUsuario" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-6 py-2.5 rounded-xl transition-fast">Cancelar</button>
+                                <button type="submit" :disabled="enviandoNovoUsuario" class="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold px-6 py-2.5 rounded-xl transition-fast">Criar Usuário</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>

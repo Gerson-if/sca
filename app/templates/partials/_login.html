@@ -1,0 +1,190 @@
+        <template x-if="page === 'login'">
+            <div class="min-h-screen w-full flex items-center justify-center bg-slate-950 p-4 relative overflow-hidden">
+                <div class="absolute inset-0 opacity-40" style="background-image: radial-gradient(circle at 15% 20%, rgba(99,102,241,0.15), transparent 40%), radial-gradient(circle at 85% 80%, rgba(59,130,246,0.12), transparent 40%);"></div>
+
+                <div class="w-full max-w-md z-10 fade-in">
+
+                    <!-- ===== TELA: AGUARDANDO APROVAÇÃO ===== -->
+                    <template x-if="contaPendente">
+                        <div class="bg-slate-900 p-8 md:p-10 rounded-2xl shadow-xl border border-slate-800 text-center">
+                            <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-400 mb-4">
+                                <i class="fa-solid fa-hourglass-half text-xl"></i>
+                            </div>
+                            <h2 class="text-xl font-bold text-white tracking-tight">Cadastro em análise</h2>
+                            <p class="text-slate-400 mt-2 text-sm">
+                                Olá, <span class="font-semibold text-slate-200" x-text="loginUser"></span>! Seu cadastro foi enviado e está aguardando aprovação do administrador.
+                                Assim que for aprovado, você poderá acessar normalmente.
+                            </p>
+                            <button @click="voltarLogin" class="mt-6 w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-3 px-4 rounded-xl transition-fast">
+                                Voltar
+                            </button>
+                        </div>
+                    </template>
+
+                    <!-- ===== TELA: CADASTRO REPROVADO ===== -->
+                    <template x-if="contaReprovada">
+                        <div class="bg-slate-900 p-8 md:p-10 rounded-2xl shadow-xl border border-slate-800 text-center">
+                            <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-rose-500/10 text-rose-400 mb-4">
+                                <i class="fa-solid fa-ban text-xl"></i>
+                            </div>
+                            <h2 class="text-xl font-bold text-white tracking-tight">Acesso não autorizado</h2>
+                            <p class="text-slate-400 mt-2 text-sm">
+                                Seu cadastro não foi aprovado pelo administrador. Entre em contato com a administração para mais informações.
+                            </p>
+                            <button @click="voltarLogin" class="mt-6 w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-3 px-4 rounded-xl transition-fast">
+                                Voltar
+                            </button>
+                        </div>
+                    </template>
+
+                    <!-- ===== TELA: LOGIN / CADASTRO ===== -->
+                    <template x-if="!contaPendente && !contaReprovada">
+                        <div>
+                            <button @click="goLanding" class="flex items-center gap-2 text-slate-500 hover:text-slate-300 text-sm font-medium mb-6 transition-fast">
+                                <i class="fa-solid fa-arrow-left text-xs"></i>
+                                Voltar
+                            </button>
+
+                            <div class="bg-slate-900 p-8 md:p-10 rounded-2xl shadow-xl border border-slate-800">
+                                <div class="text-center mb-6">
+                                    <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-600 text-white mb-4">
+                                        <i class="fa-solid fa-city text-xl"></i>
+                                    </div>
+                                    <h2 class="text-2xl font-bold text-white tracking-tight">SCA Control</h2>
+                                    <p class="text-slate-500 mt-1.5 text-sm">Acesse com sua conta ou solicite cadastro</p>
+                                </div>
+
+                                <div class="flex bg-slate-800/60 border border-slate-700 p-1.5 rounded-xl mb-6">
+                                    <button
+                                        type="button"
+                                        @click="loginModo = 'entrar'; loginError = ''"
+                                        class="flex-1 py-2 rounded-lg text-sm font-semibold transition-fast"
+                                        :class="loginModo === 'entrar' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'"
+                                    >Entrar</button>
+                                    <button
+                                        type="button"
+                                        @click="loginModo = 'cadastrar'; loginError = ''"
+                                        class="flex-1 py-2 rounded-lg text-sm font-semibold transition-fast"
+                                        :class="loginModo === 'cadastrar' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'"
+                                    >Cadastrar-se</button>
+                                </div>
+
+                                <!-- FORM: ENTRAR -->
+                                <form x-show="loginModo === 'entrar'" @submit.prevent="doLogin" class="space-y-4">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Usuário</label>
+                                        <div class="relative">
+                                            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">
+                                                <i class="fa-regular fa-user"></i>
+                                            </span>
+                                            <input
+                                                type="text"
+                                                placeholder="seu.usuario"
+                                                x-model="loginUser"
+                                                class="w-full pl-10 pr-4 py-3 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-slate-800/60 text-slate-100 placeholder-slate-500 transition-fast"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Senha</label>
+                                        <div class="relative">
+                                            <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-500">
+                                                <i class="fa-solid fa-lock"></i>
+                                            </span>
+                                            <input
+                                                :type="showPass ? 'text' : 'password'"
+                                                placeholder="••••••••"
+                                                x-model="loginPass"
+                                                class="w-full pl-10 pr-11 py-3 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-slate-800/60 text-slate-100 placeholder-slate-500 transition-fast"
+                                            />
+                                            <button type="button" @click="showPass = !showPass" class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-500 hover:text-slate-300 transition-fast">
+                                                <i class="fa-regular" :class="showPass ? 'fa-eye-slash' : 'fa-eye'"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <label class="flex items-start gap-2.5 text-xs text-slate-400 cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            x-model="manterConectado"
+                                            class="mt-0.5 w-4 h-4 rounded border-slate-700 bg-slate-800/60 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0"
+                                        />
+                                        <span>
+                                            Manter conectado neste dispositivo
+                                            <span class="block text-[11px] text-slate-500 mt-0.5">Só marque em computador pessoal. Em computador compartilhado, deixe desmarcado — a sessão encerra sozinha ao fechar o navegador.</span>
+                                        </span>
+                                    </label>
+
+                                    <template x-if="loginError">
+                                        <div class="flex items-center gap-2 text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl px-3.5 py-2.5 text-sm">
+                                            <i class="fa-solid fa-circle-exclamation"></i>
+                                            <span x-text="loginError"></span>
+                                        </div>
+                                    </template>
+
+                                    <button
+                                        type="submit"
+                                        :disabled="enviandoLogin"
+                                        class="w-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl transition-fast flex items-center justify-center gap-2 mt-6"
+                                    >
+                                        <span x-text="enviandoLogin ? 'Entrando...' : 'Entrar'"></span>
+                                        <i class="fa-solid fa-arrow-right text-sm" x-show="!enviandoLogin"></i>
+                                    </button>
+                                </form>
+
+                                <!-- FORM: CADASTRAR -->
+                                <form x-show="loginModo === 'cadastrar'" @submit.prevent="doRegistrar" class="space-y-4">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Escolha um usuário</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Mínimo 3 caracteres"
+                                            x-model="registroUser"
+                                            class="w-full px-4 py-3 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-800/60 text-slate-100 placeholder-slate-500 transition-fast"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Escolha uma senha</label>
+                                        <input
+                                            type="password"
+                                            placeholder="Mínimo 6 caracteres"
+                                            x-model="registroPass"
+                                            class="w-full px-4 py-3 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-800/60 text-slate-100 placeholder-slate-500 transition-fast"
+                                        />
+                                    </div>
+
+                                    <template x-if="registroErro">
+                                        <div class="flex items-center gap-2 text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl px-3.5 py-2.5 text-sm">
+                                            <i class="fa-solid fa-circle-exclamation"></i>
+                                            <span x-text="registroErro"></span>
+                                        </div>
+                                    </template>
+                                    <template x-if="registroSucesso">
+                                        <div class="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3.5 py-2.5 text-sm">
+                                            <i class="fa-solid fa-circle-check"></i>
+                                            <span x-text="registroSucesso"></span>
+                                        </div>
+                                    </template>
+
+                                    <p class="text-[11px] text-slate-500">
+                                        <i class="fa-solid fa-circle-info mr-1"></i>
+                                        Após o cadastro, um administrador precisa aprovar seu acesso antes que você possa entrar.
+                                    </p>
+
+                                    <button
+                                        type="submit"
+                                        :disabled="enviandoRegistro"
+                                        class="w-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl transition-fast flex items-center justify-center gap-2 mt-2"
+                                    >
+                                        <span x-text="enviandoRegistro ? 'Enviando...' : 'Solicitar Cadastro'"></span>
+                                        <i class="fa-solid fa-user-plus text-sm" x-show="!enviandoRegistro"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </template>
+
+                </div>
+            </div>
+        </template>

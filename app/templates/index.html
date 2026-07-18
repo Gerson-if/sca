@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SCA | Sistema de Cidades e Avisos</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body class="bg-slate-950 text-slate-200 min-h-screen flex flex-col antialiased">
+
+    <div x-data="app()" x-init="init()" class="flex-grow flex flex-col w-full" x-cloak>
+
+        <!-- ===================== LANDING PAGE (visitantes não logados) ===================== -->
+        {% include "partials/_landing.html" %}
+
+        <!-- ===================== LOGIN ===================== -->
+        {% include "partials/_login.html" %}
+
+        <!-- ===================== SHELL (PÚBLICO + ADMIN) — só para quem já está autenticado ===================== -->
+        <template x-if="page === 'admin' || page === 'public'">
+            <div class="min-h-screen bg-slate-950 flex flex-col">
+
+                {% include "partials/_nav.html" %}
+
+                <!-- ===================== ADMIN ===================== -->
+                {% include "partials/_admin.html" %}
+
+                <!-- ===================== PÚBLICO ===================== -->
+                {% include "partials/_public.html" %}
+
+                <!-- ===================== MODAL CIDADE ===================== -->
+                {% include "partials/_modal_cidade.html" %}
+
+                <!-- ===================== MODAL AVISO ===================== -->
+                {% include "partials/_modal_aviso.html" %}
+
+                <!-- ===================== MODAL DETALHE DA CIDADE ===================== -->
+                {% include "partials/_modal_cidade_detalhe.html" %}
+
+                <!-- ===================== MODAL PERFIL (dados/senha/sessões) ===================== -->
+                {% include "partials/_modal_perfil.html" %}
+
+                <!-- ===================== MODAL NOVO USUÁRIO (admin) ===================== -->
+                {% include "partials/_modal_novo_usuario.html" %}
+
+            </div>
+        </template>
+
+        <!-- ===================== TOAST DE NOTIFICAÇÃO ===================== -->
+        {% include "partials/_toast.html" %}
+
+        <!-- ===================== MODAL DE CONFIRMAÇÃO ===================== -->
+        {% include "partials/_confirm_modal.html" %}
+
+    </div>
+
+    <!-- Sem `defer`: precisa terminar de executar (e definir `app()` no
+         escopo global) antes que o Alpine (carregado com `defer` no head)
+         processe `x-data="app()"` após o fim do parsing do documento. -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

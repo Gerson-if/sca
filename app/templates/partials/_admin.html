@@ -1,0 +1,770 @@
+                <template x-if="page === 'admin' && loggedIn">
+                    <div class="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full flex-grow fade-in">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+                            <div>
+                                <h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Painel de Administração</h1>
+                                <p class="text-slate-500 mt-1 text-sm">Gerencie a cobertura de prazos operacionais e publique avisos importantes.</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                            <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 flex flex-col justify-between">
+                                <div>
+                                    <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2 mb-1">
+                                        <i class="fa-solid fa-chart-simple text-blue-400 animate-pulse"></i> Distribuição das Cidades
+                                    </h3>
+                                    <p class="text-xs text-slate-500 mb-4">Proporção operacional entre Matrizes e Filiais cadastradas.</p>
+                                </div>
+                                <div class="relative h-44 w-full flex items-center justify-center">
+                                    <canvas id="chartCidades"></canvas>
+                                </div>
+                            </div>
+
+                            <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 flex flex-col justify-between">
+                                <div>
+                                    <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2 mb-1">
+                                        <i class="fa-solid fa-chart-pie text-indigo-400"></i> Status de Avisos Atuais
+                                    </h3>
+                                    <p class="text-xs text-slate-500 mb-4">Resumo visual da validade e vigência de seus informativos.</p>
+                                </div>
+                                <div class="relative h-44 w-full flex items-center justify-center">
+                                    <canvas id="chartAvisos"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                            <div class="flex bg-slate-900 border border-slate-800 p-1.5 rounded-2xl max-w-xl w-full sm:w-auto flex-wrap">
+                                <button
+                                    @click="setAdminTab('cidades')"
+                                    class="flex-1 sm:flex-none py-2.5 px-6 rounded-xl text-sm font-semibold transition-fast flex items-center justify-center gap-2"
+                                    :class="adminTab === 'cidades' ? 'bg-slate-800 text-blue-400' : 'text-slate-500 hover:text-slate-300'"
+                                >
+                                    <i class="fa-solid fa-city text-xs"></i>
+                                    <span>Cidades</span>
+                                </button>
+                                <button
+                                    @click="setAdminTab('avisos')"
+                                    class="flex-1 sm:flex-none py-2.5 px-6 rounded-xl text-sm font-semibold transition-fast flex items-center justify-center gap-2"
+                                    :class="adminTab === 'avisos' ? 'bg-slate-800 text-indigo-400' : 'text-slate-500 hover:text-slate-300'"
+                                >
+                                    <i class="fa-solid fa-bullhorn text-xs"></i>
+                                    <span>Avisos</span>
+                                </button>
+                                <button
+                                    @click="setAdminTab('usuarios')"
+                                    class="flex-1 sm:flex-none py-2.5 px-6 rounded-xl text-sm font-semibold transition-fast flex items-center justify-center gap-2 relative"
+                                    :class="adminTab === 'usuarios' ? 'bg-slate-800 text-emerald-400' : 'text-slate-500 hover:text-slate-300'"
+                                >
+                                    <i class="fa-solid fa-user-check text-xs"></i>
+                                    <span>Usuários</span>
+                                    <span x-show="usuariosPendentesCount() > 0" class="absolute -top-1.5 -right-1.5 bg-amber-500 text-slate-950 text-[10px] font-extrabold w-5 h-5 rounded-full flex items-center justify-center" x-text="usuariosPendentesCount()"></span>
+                                </button>
+                                <button
+                                    @click="setAdminTab('landing')"
+                                    class="flex-1 sm:flex-none py-2.5 px-6 rounded-xl text-sm font-semibold transition-fast flex items-center justify-center gap-2"
+                                    :class="adminTab === 'landing' ? 'bg-slate-800 text-amber-400' : 'text-slate-500 hover:text-slate-300'"
+                                >
+                                    <i class="fa-solid fa-image text-xs"></i>
+                                    <span>Página Inicial</span>
+                                </button>
+                                <button
+                                    @click="setAdminTab('personalizacao')"
+                                    class="flex-1 sm:flex-none py-2.5 px-6 rounded-xl text-sm font-semibold transition-fast flex items-center justify-center gap-2"
+                                    :class="adminTab === 'personalizacao' ? 'bg-slate-800 text-pink-400' : 'text-slate-500 hover:text-slate-300'"
+                                >
+                                    <i class="fa-solid fa-palette text-xs"></i>
+                                    <span>Cards</span>
+                                </button>
+                            </div>
+
+                            <button
+                                x-show="adminTab === 'cidades' || adminTab === 'avisos'"
+                                @click="adminTab === 'cidades' ? abrirModalCidade() : abrirModalAviso()"
+                                class="px-5 py-3 rounded-xl text-sm font-bold text-white transition-fast flex items-center justify-center gap-2"
+                                :class="adminTab === 'cidades' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-indigo-600 hover:bg-indigo-500'"
+                            >
+                                <i class="fa-solid fa-plus animate-bounce"></i>
+                                <span x-text="adminTab === 'cidades' ? 'Nova Cidade' : 'Novo Alerta / Aviso'"></span>
+                            </button>
+                        </div>
+
+                        <!-- TABELA CIDADES -->
+                        <div x-show="adminTab === 'cidades'" class="space-y-6">
+                            <div class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
+                                <div class="px-6 py-4 border-b border-slate-800 flex justify-between items-center">
+                                    <h2 class="text-base font-bold text-slate-100">Cidades Cadastradas</h2>
+                                    <div class="relative w-64">
+                                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-500">
+                                            <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                                        </span>
+                                        <input
+                                            type="text"
+                                            placeholder="Pesquisar cidade..."
+                                            x-model="searchQuery"
+                                            class="w-full pl-9 pr-3 py-1.5 bg-slate-800 text-slate-200 text-xs border border-slate-700 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500 transition-fast"
+                                        />
+                                    </div>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr class="bg-slate-800/50 border-b border-slate-800 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                                                <th class="p-4 pl-6">Nome</th>
+                                                <th class="p-4">Perfil</th>
+                                                <th class="p-4">Prazo Operacional</th>
+                                                <th class="p-4">Prazo de O.S / Abertura</th>
+                                                <th class="p-4">Plantão FDS</th>
+                                                <th class="p-4 text-center">Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-800 text-sm text-slate-300">
+                                            <template x-for="cidade in cidadesFiltradas()" :key="cidade.id">
+                                                <tr class="hover:bg-slate-800/40 transition-fast">
+                                                    <td class="p-4 pl-6">
+                                                        <div class="font-semibold text-slate-100" x-text="cidade.nome"></div>
+                                                        <div class="text-xs text-slate-500 truncate max-w-xs mt-0.5" x-text="cidade.observacao ? 'Obs: ' + cidade.observacao : ''"></div>
+                                                    </td>
+                                                    <td class="p-4">
+                                                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide"
+                                                            :class="cidade.perfil === 'matriz' ? 'bg-blue-500/10 text-blue-400' : 'bg-slate-700/50 text-slate-300'">
+                                                            <span class="w-1.5 h-1.5 rounded-full" :class="cidade.perfil === 'matriz' ? 'bg-blue-400' : 'bg-slate-400'"></span>
+                                                            <span x-text="cidade.perfil"></span>
+                                                        </span>
+                                                    </td>
+                                                    <td class="p-4">
+                                                        <template x-if="cidade.modoPrazo !== 'semData'">
+                                                            <span class="text-slate-200 bg-slate-800 px-2.5 py-1 rounded-lg text-xs font-mono-tab w-max inline-block"
+                                                                  x-text="formatarData(cidade.prazoInicio, cidade.modoPrazo === 'dataHora') + ' a ' + formatarData(cidade.prazoFim, cidade.modoPrazo === 'dataHora')">
+                                                            </span>
+                                                        </template>
+                                                        <template x-if="cidade.modoPrazo === 'semData'">
+                                                            <span class="text-slate-500">Sem data limite</span>
+                                                        </template>
+                                                    </td>
+                                                    <td class="p-4 font-medium text-slate-300">
+                                                        <span class="flex items-center gap-1.5 text-xs">
+                                                            <i class="fa-solid fa-gear text-indigo-400" :class="cidade.regraHoras ? 'animate-spin-slow' : ''"></i>
+                                                            <span x-text="cidade.regraHoras || (cidade.modoPrazo === 'semData' ? 'Modo Normal (Fluxo Livre)' : 'Modo Normal (24h)')"></span>
+                                                        </span>
+                                                    </td>
+                                                    <td class="p-4">
+                                                        <div class="flex flex-col gap-1">
+                                                            <template x-if="cidade.tecnicosFimSemana">
+                                                                <div class="flex items-center gap-1.5 text-emerald-400 font-semibold text-xs">
+                                                                    <i class="fa-solid fa-circle-check"></i>
+                                                                    <span x-text="'Plantonista: ' + (cidade.plantonistaFDS ? cidade.plantonistaFDS : (cidade.modoAutoPlantonista ? 'Definido pelo Sistema' : 'Não Definido'))"></span>
+                                                                </div>
+                                                            </template>
+                                                            <template x-if="!cidade.tecnicosFimSemana">
+                                                                <div class="flex items-center gap-1.5 text-slate-500 text-xs">
+                                                                    <i class="fa-solid fa-circle-xmark"></i>
+                                                                    <span>Inativo no Fim de Semana</span>
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                    </td>
+                                                    <td class="p-4 text-center">
+                                                        <div class="flex items-center justify-center gap-2">
+                                                            <button @click="editarCidade(cidade)" class="p-2 text-slate-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-fast" title="Editar">
+                                                                <i class="fa-solid fa-pen"></i>
+                                                            </button>
+                                                            <button @click="excluirCidade(cidade.id)" class="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-fast" title="Excluir">
+                                                                <i class="fa-solid fa-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </template>
+                                            <tr x-show="cidadesFiltradas().length === 0">
+                                                <td colspan="6" class="p-8 text-center text-slate-500">
+                                                    <i class="fa-solid fa-folder-open text-2xl mb-2 block animate-pulse"></i>
+                                                    Nenhuma cidade encontrada ou cadastrada.
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TABELA AVISOS -->
+                        <div x-show="adminTab === 'avisos'" class="space-y-6">
+                            <div class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
+                                <div class="px-6 py-4 border-b border-slate-800">
+                                    <h2 class="text-base font-bold text-slate-100">Avisos Existentes</h2>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr class="bg-slate-800/50 border-b border-slate-800 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                                                <th class="p-4 pl-6">Alerta</th>
+                                                <th class="p-4">Descrição</th>
+                                                <th class="p-4">Vigência</th>
+                                                <th class="p-4 w-40">Progresso</th>
+                                                <th class="p-4">Status</th>
+                                                <th class="p-4 text-center">Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-800 text-sm text-slate-300">
+                                            <template x-for="aviso in avisos" :key="aviso.id">
+                                                <tr class="hover:bg-slate-800/40 transition-fast">
+                                                    <td class="p-4 pl-6">
+                                                        <div class="flex items-center gap-2.5">
+                                                            <span class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" :class="corIconeAviso(aviso)">
+                                                                <i class="fa-solid" :class="[iconeAviso(aviso), animacaoIconeAviso(aviso)]"></i>
+                                                            </span>
+                                                            <div>
+                                                                <div class="font-semibold text-slate-100" x-text="aviso.titulo"></div>
+                                                                <div class="text-[11px] text-slate-500">por <span x-text="aviso.autorNome"></span> · <span x-text="rotuloTipoAviso(aviso.tipo)"></span></div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td class="p-4 max-w-xs truncate text-slate-400" x-text="aviso.descricao || '—'"></td>
+                                                    <td class="p-4 font-mono-tab text-xs text-slate-300">
+                                                        <template x-if="aviso.modoDuracao === 'horas'">
+                                                            <span x-text="formatarData(aviso.inicio, true) + ' (' + aviso.duracaoHoras + 'h)'"></span>
+                                                        </template>
+                                                        <template x-if="aviso.modoDuracao !== 'horas'">
+                                                            <span x-text="formatarData(aviso.inicio) + ' – ' + formatarData(aviso.fim)"></span>
+                                                        </template>
+                                                    </td>
+                                                    <td class="p-4">
+                                                        <div class="flex items-center gap-2 w-32">
+                                                            <div class="flex-1 bg-slate-800 rounded-full h-1.5 overflow-hidden border border-slate-700">
+                                                                <div class="h-full rounded-full transition-all duration-500"
+                                                                     :style="'width: ' + obterPorcentagemAviso(aviso) + '%'"
+                                                                     :class="obterCorBarraProgresso(obterPorcentagemAviso(aviso))">
+                                                                </div>
+                                                            </div>
+                                                            <span class="text-[11px] font-semibold text-slate-500 w-8 text-right" x-text="obterPorcentagemAviso(aviso) + '%'"></span>
+                                                        </div>
+                                                    </td>
+                                                    <td class="p-4">
+                                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold tracking-wide uppercase"
+                                                            :class="{
+                                                                'bg-emerald-500/10 text-emerald-400': aviso.status === 'Ativo',
+                                                                'bg-rose-500/10 text-rose-400': aviso.status === 'Expirado',
+                                                                'bg-amber-500/10 text-amber-400': aviso.status === 'Aguardando'
+                                                            }">
+                                                            <span class="w-1.5 h-1.5 rounded-full"
+                                                                :class="{
+                                                                    'bg-emerald-400 animate-pulse': aviso.status === 'Ativo',
+                                                                    'bg-rose-400': aviso.status === 'Expirado',
+                                                                    'bg-amber-400': aviso.status === 'Aguardando'
+                                                                }"></span>
+                                                            <span x-text="aviso.status"></span>
+                                                        </span>
+                                                    </td>
+                                                    <td class="p-4 text-center">
+                                                        <div class="flex items-center justify-center gap-2" x-show="podeGerenciarAviso(aviso)">
+                                                            <button @click="editarAviso(aviso)" class="p-2 text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-fast" title="Editar">
+                                                                <i class="fa-solid fa-pen"></i>
+                                                            </button>
+                                                            <button @click="excluirAviso(aviso.id)" class="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-fast" title="Excluir">
+                                                                <i class="fa-solid fa-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                        <span x-show="!podeGerenciarAviso(aviso)" class="text-[11px] text-slate-600 italic">Somente o autor</span>
+                                                    </td>
+                                                </tr>
+                                            </template>
+                                            <tr x-show="avisos.length === 0">
+                                                <td colspan="6" class="p-8 text-center text-slate-500">
+                                                    <i class="fa-solid fa-folder-open text-2xl mb-2 block"></i>
+                                                    Nenhum aviso publicado no momento.
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TABELA USUÁRIOS -->
+                        <div x-show="adminTab === 'usuarios'" class="space-y-6">
+                            <div class="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
+                                <div class="px-6 py-4 border-b border-slate-800 flex justify-between items-center flex-wrap gap-3">
+                                    <h2 class="text-base font-bold text-slate-100">Cadastros de Acesso à Área Pública</h2>
+                                    <div class="flex items-center gap-3 flex-wrap">
+                                        <div class="flex bg-slate-800 border border-slate-700 p-1 rounded-xl text-xs">
+                                            <button @click="usuariosFiltro = 'todos'" class="px-3 py-1.5 rounded-lg font-semibold transition-fast" :class="usuariosFiltro === 'todos' ? 'bg-slate-700 text-slate-100' : 'text-slate-500'">Todos</button>
+                                            <button @click="usuariosFiltro = 'pendente'" class="px-3 py-1.5 rounded-lg font-semibold transition-fast" :class="usuariosFiltro === 'pendente' ? 'bg-amber-500/20 text-amber-400' : 'text-slate-500'">Pendentes</button>
+                                            <button @click="usuariosFiltro = 'aprovado'" class="px-3 py-1.5 rounded-lg font-semibold transition-fast" :class="usuariosFiltro === 'aprovado' ? 'bg-emerald-500/20 text-emerald-400' : 'text-slate-500'">Aprovados</button>
+                                            <button @click="usuariosFiltro = 'reprovado'" class="px-3 py-1.5 rounded-lg font-semibold transition-fast" :class="usuariosFiltro === 'reprovado' ? 'bg-rose-500/20 text-rose-400' : 'text-slate-500'">Reprovados</button>
+                                        </div>
+                                        <button @click="abrirModalNovoUsuario" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition-fast flex items-center gap-2">
+                                            <i class="fa-solid fa-user-plus"></i> Novo Usuário
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr class="bg-slate-800/50 border-b border-slate-800 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                                                <th class="p-4 pl-6">Usuário</th>
+                                                <th class="p-4">Papel</th>
+                                                <th class="p-4">Status</th>
+                                                <th class="p-4">Cadastrado em</th>
+                                                <th class="p-4 text-center">Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-800 text-sm text-slate-300">
+                                            <template x-for="usuario in usuariosFiltrados()" :key="usuario.id">
+                                                <tr class="hover:bg-slate-800/40 transition-fast">
+                                                    <td class="p-4 pl-6">
+                                                        <template x-if="usuarioEditandoId !== usuario.id">
+                                                            <div class="font-semibold text-slate-100" x-text="usuario.username"></div>
+                                                        </template>
+                                                        <template x-if="usuarioEditandoId === usuario.id">
+                                                            <input type="text" x-model="usuarioEdicaoForm.username" class="bg-slate-800 border border-indigo-500 rounded-lg px-2 py-1 text-xs w-32" />
+                                                        </template>
+                                                    </td>
+                                                    <td class="p-4">
+                                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
+                                                            :class="usuario.role === 'admin' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-slate-700/50 text-slate-300'"
+                                                            x-text="usuario.role === 'admin' ? 'Admin' : 'Usuário'"></span>
+                                                    </td>
+                                                    <td class="p-4">
+                                                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold tracking-wide uppercase"
+                                                            :class="{
+                                                                'bg-emerald-500/10 text-emerald-400': usuario.status === 'aprovado',
+                                                                'bg-rose-500/10 text-rose-400': usuario.status === 'reprovado',
+                                                                'bg-amber-500/10 text-amber-400': usuario.status === 'pendente'
+                                                            }" x-text="usuario.status"></span>
+                                                    </td>
+                                                    <td class="p-4 text-xs font-mono-tab text-slate-400" x-text="formatarData(usuario.criadoEm.slice(0,10))"></td>
+                                                    <td class="p-4">
+                                                        <div class="flex items-center justify-center gap-1.5 flex-wrap">
+                                                            <template x-if="usuarioEditandoId !== usuario.id">
+                                                            <div>
+                                                                <template x-if="usuario.role !== 'admin'">
+                                                                    <div class="flex items-center gap-1.5">
+                                                                        <button x-show="usuario.status !== 'aprovado'" @click="aprovarUsuario(usuario)" class="p-2 text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-fast" title="Aprovar">
+                                                                            <i class="fa-solid fa-check"></i>
+                                                                        </button>
+                                                                        <button x-show="usuario.status !== 'reprovado'" @click="reprovarUsuario(usuario)" class="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-fast" title="Reprovar">
+                                                                            <i class="fa-solid fa-ban"></i>
+                                                                        </button>
+                                                                        <button @click="alternarRoleUsuario(usuario)" class="p-2 text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-fast" title="Promover a administrador">
+                                                                            <i class="fa-solid fa-user-shield"></i>
+                                                                        </button>
+                                                                        <button @click="iniciarEdicaoUsuario(usuario)" class="p-2 text-slate-500 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-lg transition-fast" title="Editar usuário/senha">
+                                                                            <i class="fa-solid fa-pen"></i>
+                                                                        </button>
+                                                                        <button @click="excluirUsuario(usuario)" class="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-fast" title="Excluir">
+                                                                            <i class="fa-solid fa-trash"></i>
+                                                                        </button>
+                                                                    </div>
+                                                                </template>
+                                                                <template x-if="usuario.role === 'admin'">
+                                                                    <div class="flex items-center gap-1.5">
+                                                                        <span class="text-[11px] text-slate-600 italic mr-1">Administrador</span>
+                                                                        <button x-show="usuario.id !== usuarioAtual.id" @click="alternarRoleUsuario(usuario)" class="p-2 text-slate-500 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-fast" title="Remover privilégios de admin">
+                                                                            <i class="fa-solid fa-user-minus"></i>
+                                                                        </button>
+                                                                    </div>
+                                                                </template>
+                                                            </div>
+                                                        </template>
+                                                            <template x-if="usuarioEditandoId === usuario.id">
+                                                                <div class="flex items-center gap-1.5 w-full">
+                                                                    <input type="password" x-model="usuarioEdicaoForm.password" placeholder="Nova senha (opcional)" class="bg-slate-800 border border-indigo-500 rounded-lg px-2 py-1 text-xs flex-1 min-w-[9rem]" />
+                                                                    <button @click="salvarEdicaoUsuario(usuario)" class="p-2 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-fast" title="Salvar"><i class="fa-solid fa-check"></i></button>
+                                                                    <button @click="usuarioEditandoId = null" class="p-2 text-slate-500 hover:bg-slate-800 rounded-lg transition-fast" title="Cancelar"><i class="fa-solid fa-xmark"></i></button>
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </template>
+                                            <tr x-show="usuariosFiltrados().length === 0">
+                                                <td colspan="5" class="p-8 text-center text-slate-500">
+                                                    <i class="fa-solid fa-users-slash text-2xl mb-2 block"></i>
+                                                    Nenhum usuário encontrado para este filtro.
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- CONFIGURAÇÃO DA PÁGINA INICIAL (LANDING PAGE) -->
+                        <div x-show="adminTab === 'landing'" class="space-y-6">
+                            <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
+                                <h2 class="text-base font-bold text-slate-100 mb-1">Personalização da Página Inicial</h2>
+                                <p class="text-xs text-slate-500 mb-6">
+                                    É a primeira tela que qualquer visitante vê, antes de entrar no sistema — nenhum
+                                    dado interno (cidades, avisos, chat) aparece aqui.
+                                </p>
+
+                                <form @submit.prevent="salvarConfiguracaoSite" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                    <!-- COLUNA: TEXTOS -->
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-300 mb-1.5">Nome da Empresa</label>
+                                            <input type="text" x-model="configForm.nomeEmpresa" maxlength="120"
+                                                class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-300 mb-1.5">Slogan</label>
+                                            <input type="text" x-model="configForm.slogan" maxlength="200" placeholder="Uma frase curta e marcante"
+                                                class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-300 mb-1.5">Descrição (opcional)</label>
+                                            <textarea x-model="configForm.descricao" rows="3" maxlength="1000" placeholder="Um parágrafo curto sobre a empresa ou o sistema"
+                                                class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-300 mb-1.5">Cor de Destaque</label>
+                                            <div class="flex items-center gap-3">
+                                                <input type="color" x-model="configForm.corDestaque" class="w-12 h-10 rounded-lg border border-slate-700 bg-slate-800 cursor-pointer" />
+                                                <input type="text" x-model="configForm.corDestaque" maxlength="7"
+                                                    class="flex-1 px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm text-slate-100 font-mono-tab focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-300 mb-1.5">Logotipo (opcional)</label>
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-12 h-12 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0">
+                                                    <img x-show="configForm.logoUrl" :src="configForm.logoUrl" class="w-full h-full object-cover" />
+                                                    <i x-show="!configForm.logoUrl" class="fa-solid fa-image text-slate-600"></i>
+                                                </div>
+                                                <input type="file" accept="image/png,image/jpeg,image/webp" @change="enviarLogoSite($event)"
+                                                    class="flex-1 text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-700 file:text-white hover:file:bg-slate-600 file:cursor-pointer cursor-pointer" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- COLUNA: FUNDO -->
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-300 mb-1.5">Fundo da Página Inicial</label>
+                                            <div class="flex bg-slate-800 border border-slate-700 p-1.5 rounded-xl text-xs w-max">
+                                                <button type="button" @click="configForm.tipoFundo = 'nenhum'" class="px-3 py-1.5 rounded-lg font-semibold transition-fast" :class="configForm.tipoFundo === 'nenhum' ? 'bg-slate-700 text-slate-100' : 'text-slate-500'">Nenhum</button>
+                                                <button type="button" @click="configForm.tipoFundo = 'imagem'" class="px-3 py-1.5 rounded-lg font-semibold transition-fast" :class="configForm.tipoFundo === 'imagem' ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-500'">Imagem</button>
+                                                <button type="button" @click="configForm.tipoFundo = 'video'" class="px-3 py-1.5 rounded-lg font-semibold transition-fast" :class="configForm.tipoFundo === 'video' ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-500'">Vídeo Animado</button>
+                                            </div>
+                                        </div>
+
+                                        <template x-if="configForm.tipoFundo === 'imagem'">
+                                            <div class="space-y-2">
+                                                <div class="w-full h-36 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex items-center justify-center">
+                                                    <img x-show="configForm.imagemFundoUrl" :src="configForm.imagemFundoUrl" class="w-full h-full object-cover" />
+                                                    <i x-show="!configForm.imagemFundoUrl" class="fa-solid fa-panorama text-3xl text-slate-600"></i>
+                                                </div>
+                                                <input type="file" accept="image/png,image/jpeg,image/webp" @change="enviarImagemFundoSite($event)"
+                                                    class="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 file:cursor-pointer cursor-pointer" />
+                                                <p class="text-[11px] text-slate-500">Otimizada e redimensionada automaticamente ao enviar.</p>
+                                            </div>
+                                        </template>
+
+                                        <template x-if="configForm.tipoFundo === 'video'">
+                                            <div class="space-y-2">
+                                                <div class="w-full h-36 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex items-center justify-center">
+                                                    <video x-show="configForm.videoFundoUrl" :src="configForm.videoFundoUrl" autoplay muted loop playsinline class="w-full h-full object-cover"></video>
+                                                    <i x-show="!configForm.videoFundoUrl" class="fa-solid fa-clapperboard text-3xl text-slate-600"></i>
+                                                </div>
+                                                <input type="file" accept="video/mp4,video/webm" @change="enviarVideoFundoSite($event)"
+                                                    class="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 file:cursor-pointer cursor-pointer" />
+                                                <p class="text-[11px] text-slate-500">Formatos aceitos: MP4 ou WebM, até 20 MB.</p>
+                                            </div>
+                                        </template>
+
+                                        <p x-show="enviandoMidiaSite" class="text-xs text-indigo-400 flex items-center gap-1.5">
+                                            <i class="fa-solid fa-spinner fa-spin"></i> Enviando arquivo...
+                                        </p>
+                                    </div>
+
+                                    <div class="lg:col-span-2 flex items-center justify-between gap-4 pt-2 border-t border-slate-800">
+                                        <p x-show="formErrorConfig" class="text-sm text-rose-400 flex items-center gap-1.5">
+                                            <i class="fa-solid fa-circle-exclamation"></i> <span x-text="formErrorConfig"></span>
+                                        </p>
+                                        <button type="submit" class="ml-auto bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2.5 rounded-xl transition-fast flex items-center gap-2">
+                                            <i class="fa-solid fa-floppy-disk"></i> Salvar Alterações
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- PERSONALIZAÇÃO DOS CARDS DAS CIDADES -->
+                        <div x-show="adminTab === 'personalizacao'" class="space-y-6">
+                            <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
+                                <h2 class="text-base font-bold text-slate-100 mb-1">Personalização dos Cards</h2>
+                                <p class="text-xs text-slate-500 mb-6">
+                                    Altere os rótulos (textos) e a aparência aplicados automaticamente em <span class="font-semibold text-slate-400">todos</span> os
+                                    cards de cidades — sem afetar os dados já cadastrados. Use para adequar a nomenclatura à realidade da sua operação.
+                                </p>
+
+                                <form @submit.prevent="salvarPersonalizacaoCards" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                    <!-- COLUNA: RÓTULOS -->
+                                    <div class="space-y-4">
+                                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Rótulos dos Campos</h3>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label class="block text-xs font-semibold text-slate-400 mb-1">Perfil "Matriz"</label>
+                                                <input type="text" x-model="rotulosCardsForm.matriz" maxlength="80" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-semibold text-slate-400 mb-1">Perfil "Filial"</label>
+                                                <input type="text" x-model="rotulosCardsForm.filial" maxlength="80" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-semibold text-slate-400 mb-1">Rótulo do "Prazo"</label>
+                                            <input type="text" x-model="rotulosCardsForm.prazo" maxlength="80" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-semibold text-slate-400 mb-1">Texto para "sem prazo definido"</label>
+                                            <input type="text" x-model="rotulosCardsForm.semPrazo" maxlength="80" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                        </div>
+                                        <div class="grid grid-cols-3 gap-3">
+                                            <div>
+                                                <label class="block text-xs font-semibold text-slate-400 mb-1">Situação: "No Prazo"</label>
+                                                <input type="text" x-model="rotulosCardsForm.situacaoNoPrazo" maxlength="80" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-semibold text-slate-400 mb-1">Situação: "Atenção"</label>
+                                                <input type="text" x-model="rotulosCardsForm.situacaoAtencao" maxlength="80" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-semibold text-slate-400 mb-1">Situação: "Atrasado"</label>
+                                                <input type="text" x-model="rotulosCardsForm.situacaoAtrasado" maxlength="80" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-semibold text-slate-400 mb-1">Rótulo da "Regra de Horas"</label>
+                                            <input type="text" x-model="rotulosCardsForm.regraHoras" maxlength="80" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-semibold text-slate-400 mb-1">Rótulo da "Observação"</label>
+                                            <input type="text" x-model="rotulosCardsForm.observacao" maxlength="80" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                        </div>
+                                        <div class="pt-2 border-t border-slate-800 space-y-3">
+                                            <h4 class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Mensagens Automáticas (rodapé)</h4>
+                                            <div>
+                                                <label class="block text-xs font-semibold text-slate-400 mb-1">Quando há prazo limitado</label>
+                                                <input type="text" x-model="rotulosCardsForm.mensagemAutoLimitado" maxlength="80" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-semibold text-slate-400 mb-1">Quando liberado (título)</label>
+                                                <input type="text" x-model="rotulosCardsForm.mensagemAutoLiberadoTitulo" maxlength="80" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-semibold text-slate-400 mb-1">Quando liberado (detalhe)</label>
+                                                <input type="text" x-model="rotulosCardsForm.mensagemAutoLiberadoDetalhe" maxlength="80" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label class="block text-xs font-semibold text-slate-400 mb-1">Rótulo "Técnicos Fim de Semana"</label>
+                                                <input type="text" x-model="rotulosCardsForm.tecnicosFimSemana" maxlength="80" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-semibold text-slate-400 mb-1">Rótulo "Plantonista"</label>
+                                                <input type="text" x-model="rotulosCardsForm.plantonista" maxlength="80" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-3 gap-3">
+                                            <div>
+                                                <label class="block text-xs font-semibold text-slate-400 mb-1">Abertura "Normal"</label>
+                                                <input type="text" x-model="rotulosCardsForm.aberturaNormal" maxlength="80" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-semibold text-slate-400 mb-1">Abertura "Emergência"</label>
+                                                <input type="text" x-model="rotulosCardsForm.aberturaEmergencia" maxlength="80" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-semibold text-slate-400 mb-1">Abertura "Fechado"</label>
+                                                <input type="text" x-model="rotulosCardsForm.aberturaFechado" maxlength="80" class="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- COLUNA: APARÊNCIA -->
+                                    <div class="space-y-5">
+                                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Aparência dos Cards</h3>
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-300 mb-2">Tamanho da Fonte</label>
+                                            <div class="flex bg-slate-800 border border-slate-700 p-1.5 rounded-xl text-xs w-max">
+                                                <button type="button" @click="estiloCardsForm.tamanhoFonte = 'sm'" class="px-4 py-1.5 rounded-lg font-semibold transition-fast" :class="estiloCardsForm.tamanhoFonte === 'sm' ? 'bg-slate-700 text-slate-100' : 'text-slate-500'">Pequena</button>
+                                                <button type="button" @click="estiloCardsForm.tamanhoFonte = 'md'" class="px-4 py-1.5 rounded-lg font-semibold transition-fast" :class="estiloCardsForm.tamanhoFonte === 'md' ? 'bg-slate-700 text-slate-100' : 'text-slate-500'">Média</button>
+                                                <button type="button" @click="estiloCardsForm.tamanhoFonte = 'lg'" class="px-4 py-1.5 rounded-lg font-semibold transition-fast" :class="estiloCardsForm.tamanhoFonte === 'lg' ? 'bg-slate-700 text-slate-100' : 'text-slate-500'">Grande</button>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-300 mb-2">Espaçamento</label>
+                                            <div class="flex bg-slate-800 border border-slate-700 p-1.5 rounded-xl text-xs w-max">
+                                                <button type="button" @click="estiloCardsForm.espacamento = 'compacto'" class="px-4 py-1.5 rounded-lg font-semibold transition-fast" :class="estiloCardsForm.espacamento === 'compacto' ? 'bg-slate-700 text-slate-100' : 'text-slate-500'">Compacto</button>
+                                                <button type="button" @click="estiloCardsForm.espacamento = 'normal'" class="px-4 py-1.5 rounded-lg font-semibold transition-fast" :class="estiloCardsForm.espacamento === 'normal' ? 'bg-slate-700 text-slate-100' : 'text-slate-500'">Normal</button>
+                                                <button type="button" @click="estiloCardsForm.espacamento = 'espacoso'" class="px-4 py-1.5 rounded-lg font-semibold transition-fast" :class="estiloCardsForm.espacamento === 'espacoso' ? 'bg-slate-700 text-slate-100' : 'text-slate-500'">Espaçoso</button>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-300 mb-2">Largura de Cada Card</label>
+                                            <div class="flex bg-slate-800 border border-slate-700 p-1.5 rounded-xl text-xs w-max">
+                                                <button type="button" @click="estiloCardsForm.largura = 'sm'" class="px-4 py-1.5 rounded-lg font-semibold transition-fast" :class="estiloCardsForm.largura === 'sm' ? 'bg-slate-700 text-slate-100' : 'text-slate-500'">Estreito</button>
+                                                <button type="button" @click="estiloCardsForm.largura = 'md'" class="px-4 py-1.5 rounded-lg font-semibold transition-fast" :class="estiloCardsForm.largura === 'md' ? 'bg-slate-700 text-slate-100' : 'text-slate-500'">Médio</button>
+                                                <button type="button" @click="estiloCardsForm.largura = 'lg'" class="px-4 py-1.5 rounded-lg font-semibold transition-fast" :class="estiloCardsForm.largura === 'lg' ? 'bg-slate-700 text-slate-100' : 'text-slate-500'">Largo</button>
+                                                <button type="button" @click="estiloCardsForm.largura = 'xl'" class="px-4 py-1.5 rounded-lg font-semibold transition-fast" :class="estiloCardsForm.largura === 'xl' ? 'bg-slate-700 text-slate-100' : 'text-slate-500'">Extra Largo</button>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-semibold text-slate-300 mb-2">Colunas na Grade</label>
+                                            <div class="flex bg-slate-800 border border-slate-700 p-1.5 rounded-xl text-xs w-max flex-wrap">
+                                                <button type="button" @click="estiloCardsForm.colunas = 'auto'" class="px-4 py-1.5 rounded-lg font-semibold transition-fast" :class="estiloCardsForm.colunas === 'auto' ? 'bg-slate-700 text-slate-100' : 'text-slate-500'">Automático</button>
+                                                <button type="button" @click="estiloCardsForm.colunas = '1'" class="px-4 py-1.5 rounded-lg font-semibold transition-fast" :class="estiloCardsForm.colunas === '1' ? 'bg-slate-700 text-slate-100' : 'text-slate-500'">1</button>
+                                                <button type="button" @click="estiloCardsForm.colunas = '2'" class="px-4 py-1.5 rounded-lg font-semibold transition-fast" :class="estiloCardsForm.colunas === '2' ? 'bg-slate-700 text-slate-100' : 'text-slate-500'">2</button>
+                                                <button type="button" @click="estiloCardsForm.colunas = '3'" class="px-4 py-1.5 rounded-lg font-semibold transition-fast" :class="estiloCardsForm.colunas === '3' ? 'bg-slate-700 text-slate-100' : 'text-slate-500'">3</button>
+                                                <button type="button" @click="estiloCardsForm.colunas = '4'" class="px-4 py-1.5 rounded-lg font-semibold transition-fast" :class="estiloCardsForm.colunas === '4' ? 'bg-slate-700 text-slate-100' : 'text-slate-500'">4</button>
+                                            </div>
+                                        </div>
+                                        <p class="text-[11px] text-slate-500">
+                                            <i class="fa-solid fa-circle-info mr-1"></i>
+                                            Aplicado automaticamente na Área Pública para todos os usuários assim que você salvar.
+                                        </p>
+                                    </div>
+
+                                    <!-- COLUNA: CAMPOS EXIBIDOS (monte do seu jeito) -->
+                                    <div class="space-y-3">
+                                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Monte o Card do Seu Jeito</h3>
+                                        <p class="text-[11px] text-slate-500 -mt-1">Ative/desative e reordene os blocos de informação exibidos no detalhe da cidade.</p>
+
+                                        <!-- Visíveis, na ordem atual -->
+                                        <template x-for="(chave, idx) in estiloCardsForm.campos" :key="'ativo-' + chave">
+                                            <div class="flex items-center gap-2 bg-slate-800/60 border border-emerald-500/20 rounded-xl px-3 py-2.5">
+                                                <i class="fa-solid text-emerald-400 w-4 text-center" :class="(camposDisponiveis.find(c => c.chave === chave) || {}).icone"></i>
+                                                <span class="text-sm text-slate-200 flex-1 truncate" x-text="(camposDisponiveis.find(c => c.chave === chave) || {}).label"></span>
+                                                <button type="button" @click="moverCampoForm(chave, -1)" :disabled="idx === 0" class="p-1.5 text-slate-500 hover:text-slate-200 disabled:opacity-25 disabled:cursor-not-allowed transition-fast" title="Mover para cima">
+                                                    <i class="fa-solid fa-chevron-up text-xs"></i>
+                                                </button>
+                                                <button type="button" @click="moverCampoForm(chave, 1)" :disabled="idx === estiloCardsForm.campos.length - 1" class="p-1.5 text-slate-500 hover:text-slate-200 disabled:opacity-25 disabled:cursor-not-allowed transition-fast" title="Mover para baixo">
+                                                    <i class="fa-solid fa-chevron-down text-xs"></i>
+                                                </button>
+                                                <button type="button" @click="alternarCampoForm(chave)" class="p-1.5 text-emerald-400 hover:text-rose-400 transition-fast" title="Ocultar este bloco">
+                                                    <i class="fa-solid fa-eye text-xs"></i>
+                                                </button>
+                                            </div>
+                                        </template>
+
+                                        <!-- Ocultos -->
+                                        <template x-if="camposDisponiveis.some(c => !estiloCardsForm.campos.includes(c.chave))">
+                                            <div class="pt-2 space-y-2">
+                                                <p class="text-[10px] font-bold uppercase tracking-wider text-slate-600">Ocultos</p>
+                                                <template x-for="campo in camposDisponiveis.filter(c => !estiloCardsForm.campos.includes(c.chave))" :key="'oculto-' + campo.chave">
+                                                    <div class="flex items-center gap-2 bg-slate-950/60 border border-slate-800 rounded-xl px-3 py-2.5 opacity-60">
+                                                        <i class="fa-solid text-slate-600 w-4 text-center" :class="campo.icone"></i>
+                                                        <span class="text-sm text-slate-500 flex-1 truncate" x-text="campo.label"></span>
+                                                        <button type="button" @click="alternarCampoForm(campo.chave)" class="p-1.5 text-slate-500 hover:text-emerald-400 transition-fast" title="Mostrar este bloco">
+                                                            <i class="fa-solid fa-eye-slash text-xs"></i>
+                                                        </button>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
+
+                                    <div class="lg:col-span-3 flex items-center justify-between gap-4 pt-2 border-t border-slate-800">
+                                        <p x-show="formErrorPersonalizacao" class="text-sm text-rose-400 flex items-center gap-1.5">
+                                            <i class="fa-solid fa-circle-exclamation"></i> <span x-text="formErrorPersonalizacao"></span>
+                                        </p>
+                                        <button type="submit" :disabled="salvandoPersonalizacao" class="ml-auto bg-pink-600 hover:bg-pink-500 disabled:opacity-60 text-white font-bold px-6 py-2.5 rounded-xl transition-fast flex items-center gap-2">
+                                            <i class="fa-solid fa-floppy-disk"></i> Salvar Personalização
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <!-- PRÉ-VISUALIZAÇÃO AO VIVO (antes de salvar) -->
+                            <div class="bg-slate-900 rounded-2xl border border-slate-800 p-6">
+                                <h2 class="text-base font-bold text-slate-100 mb-1 flex items-center gap-2">
+                                    <i class="fa-solid fa-eye text-pink-400"></i> Pré-visualização ao Vivo
+                                </h2>
+                                <p class="text-xs text-slate-500 mb-6">
+                                    Reflete suas alterações acima em tempo real, com uma cidade de exemplo — nada aqui é salvo até você clicar em "Salvar Personalização".
+                                </p>
+
+                                <div class="bg-slate-950 rounded-2xl border border-slate-800 p-6 flex justify-center">
+                                    <div class="bg-slate-900 rounded-2xl shadow-xl border border-slate-800 w-full overflow-hidden" :class="{ sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-xl' }[estiloCardsForm.largura] || 'max-w-md'">
+                                        <div class="relative h-28 bg-gradient-to-br from-indigo-600/30 to-slate-800 flex items-center justify-center">
+                                            <i class="fa-solid fa-city text-4xl text-slate-600"></i>
+                                            <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/30 to-transparent"></div>
+                                            <div class="absolute bottom-3 left-4 right-4 flex items-end justify-between gap-2">
+                                                <h2 class="text-xl font-extrabold text-white tracking-tight" x-text="cidadeExemploPreview.nome"></h2>
+                                                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider mb-1 bg-blue-500/90 text-white" x-text="rotulosCardsForm.matriz"></span>
+                                            </div>
+                                        </div>
+
+                                        <div class="p-5 space-y-4" :class="{ sm: 'text-xs', md: 'text-sm', lg: 'text-base' }[estiloCardsForm.tamanhoFonte] || 'text-sm'">
+                                            <template x-for="campo in estiloCardsForm.campos" :key="'preview-' + campo">
+                                                <div>
+                                                    <template x-if="campo === 'clima'">
+                                                        <div class="flex items-center gap-3 bg-slate-950 border border-slate-800 rounded-xl p-3">
+                                                            <i class="fa-solid fa-cloud-sun text-2xl text-indigo-400"></i>
+                                                            <div>
+                                                                <p class="font-bold text-slate-100">27°C — Ensolarado</p>
+                                                                <p class="text-[11px] text-slate-500">Clima atual da região (exemplo)</p>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+                                                    <template x-if="campo === 'prazo'">
+                                                        <div class="space-y-1.5">
+                                                            <div class="flex justify-between items-center text-[10px] font-bold uppercase tracking-wide gap-2">
+                                                                <span class="text-amber-400 flex items-center gap-1 truncate"><i class="fa-solid fa-triangle-exclamation shrink-0"></i> <span x-text="rotulosCardsForm.prazo" class="truncate"></span></span>
+                                                                <span class="px-2 py-0.5 rounded-full shrink-0 text-amber-400 bg-amber-500/10" x-text="rotulosCardsForm.situacaoAtencao"></span>
+                                                            </div>
+                                                            <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-700">
+                                                                <div class="h-full rounded-full bg-amber-500" style="width: 70%"></div>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+                                                    <template x-if="campo === 'regraHoras'">
+                                                        <div class="flex flex-col gap-1.5 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                                                            <span class="text-slate-500 text-[11px] font-bold uppercase tracking-wider" x-text="rotulosCardsForm.regraHoras + ':'"></span>
+                                                            <span class="font-bold text-slate-200 text-xs flex items-center gap-2">
+                                                                <i class="fa-solid fa-gear text-blue-400"></i>
+                                                                <span class="text-blue-300" x-text="cidadeExemploPreview.regraHoras"></span>
+                                                            </span>
+                                                        </div>
+                                                    </template>
+                                                    <template x-if="campo === 'plantao'">
+                                                        <div class="flex flex-col gap-2">
+                                                            <div class="flex items-center justify-between">
+                                                                <span class="text-slate-500 text-xs" x-text="rotulosCardsForm.tecnicosFimSemana + ':'"></span>
+                                                                <span class="text-emerald-400 font-bold text-[11px] flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-md"><i class="fa-solid fa-circle-check"></i> Ativo</span>
+                                                            </div>
+                                                            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-2">
+                                                                <div class="flex items-center justify-between text-xs">
+                                                                    <span class="text-slate-500" x-text="rotulosCardsForm.plantonista + ':'"></span>
+                                                                    <span class="text-emerald-400 font-bold text-xs flex items-center gap-1"><i class="fa-solid fa-robot"></i> <span x-text="rotulosCardsForm.plantonistaAuto"></span></span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+                                                    <template x-if="campo === 'observacao'">
+                                                        <div class="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-xs text-amber-300">
+                                                            <span class="font-bold" x-text="rotulosCardsForm.observacao + ': '"></span>
+                                                            <span x-text="cidadeExemploPreview.observacao"></span>
+                                                        </div>
+                                                    </template>
+                                                    <template x-if="campo === 'mensagemAutomatica'">
+                                                        <div class="flex items-center gap-2.5 text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl font-bold">
+                                                            <i class="fa-regular fa-calendar-check text-amber-400"></i>
+                                                            <span x-text="rotulosCardsForm.mensagemAutoLimitado"></span>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </template>
+                                            <p x-show="estiloCardsForm.campos.length === 0" class="text-center text-slate-600 text-xs py-6 italic">
+                                                Nenhum bloco selecionado — o card ficará só com nome e perfil.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>

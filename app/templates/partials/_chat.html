@@ -1,0 +1,144 @@
+                            <div class="bg-slate-900 rounded-2xl border border-slate-800 flex flex-col h-[560px] overflow-hidden shadow-lg relative">
+                                <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between gap-2.5 bg-gradient-to-r from-indigo-600/10 to-transparent">
+                                    <div class="flex items-center gap-2.5 min-w-0">
+                                        <button x-show="chatConversaCom" @click="voltarParaChatGeral" class="p-2 -ml-1 text-slate-400 hover:text-slate-100 rounded-lg hover:bg-slate-800 transition-fast shrink-0" title="Voltar ao chat geral">
+                                            <i class="fa-solid fa-arrow-left"></i>
+                                        </button>
+                                        <span class="w-9 h-9 rounded-xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center shrink-0 overflow-hidden">
+                                            <img x-show="chatConversaCom && chatConversaCom.fotoUrl" :src="chatConversaCom ? chatConversaCom.fotoUrl : ''" class="w-full h-full object-cover" />
+                                            <i x-show="!chatConversaCom" class="fa-solid fa-comments"></i>
+                                            <span x-show="chatConversaCom && !chatConversaCom.fotoUrl" x-text="iniciaisUsuario(chatConversaCom)"></span>
+                                        </span>
+                                        <div class="min-w-0">
+                                            <h3 class="font-bold text-slate-100 text-sm truncate" x-text="chatConversaCom ? (chatConversaCom.nome) : 'Chat Interno da Equipe'"></h3>
+                                            <p class="text-[11px] text-slate-500 flex items-center gap-1.5">
+                                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                                <span x-text="chatConversaCom ? 'Conversa privada' : 'Sincronizado em tempo real'"></span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div class="relative shrink-0">
+                                        <button @click="carregarUsuariosChat(); mostrarListaUsuariosChat = !mostrarListaUsuariosChat" class="p-2.5 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-xl transition-fast" title="Nova conversa privada">
+                                            <i class="fa-solid fa-user-plus"></i>
+                                        </button>
+                                        <div x-show="mostrarListaUsuariosChat" @click.outside="mostrarListaUsuariosChat = false"
+                                             x-transition class="absolute right-0 top-full mt-2 w-64 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-20 max-h-72 overflow-y-auto" style="display:none;">
+                                            <p class="text-[11px] font-bold uppercase tracking-wide text-slate-500 px-3 pt-3 pb-1">Iniciar conversa privada</p>
+                                            <template x-for="u in chatUsuarios" :key="u.id">
+                                                <button @click="iniciarConversaPrivada(u); mostrarListaUsuariosChat = false" class="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-slate-700/60 transition-fast text-left">
+                                                    <div class="w-7 h-7 rounded-lg overflow-hidden bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-300 shrink-0">
+                                                        <img x-show="u.fotoUrl" :src="u.fotoUrl" class="w-full h-full object-cover" />
+                                                        <span x-show="!u.fotoUrl" x-text="iniciaisUsuario(u)"></span>
+                                                    </div>
+                                                    <span class="text-sm text-slate-200 truncate" x-text="u.nome"></span>
+                                                    <span x-show="u.role === 'admin'" class="ml-auto text-[9px] font-bold uppercase text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded-full shrink-0">Admin</span>
+                                                </button>
+                                            </template>
+                                            <p x-show="chatUsuarios.length === 0" class="text-xs text-slate-500 text-center py-4">Nenhum outro usuário aprovado ainda.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="flex-grow overflow-y-auto p-5 space-y-4" x-ref="chatScroll">
+                                    <template x-for="msg in chatMensagens" :key="msg.id">
+                                        <div
+                                            class="flex gap-2.5 max-w-[88%] chat-msg-in"
+                                            :class="msg.autorId === usuarioAtual.id ? 'ml-auto flex-row-reverse' : ''"
+                                        >
+                                            <button
+                                                @click="abrirPerfilRapido(msg.autorId, msg.autor, msg.autorFotoUrl, msg.autorEhAdmin)"
+                                                class="w-8 h-8 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-400 shrink-0 mt-0.5 hover:ring-2 hover:ring-indigo-500 transition-fast"
+                                                title="Ver perfil"
+                                            >
+                                                <img x-show="msg.autorFotoUrl" :src="msg.autorFotoUrl" class="w-full h-full object-cover" />
+                                                <span x-show="!msg.autorFotoUrl" x-text="(msg.autor || '?').trim().slice(0,2).toUpperCase()"></span>
+                                            </button>
+
+                                            <div class="flex flex-col gap-1 min-w-0" :class="msg.autorId === usuarioAtual.id ? 'items-end' : 'items-start'">
+                                                <div class="flex items-center gap-1.5 text-[11px] text-slate-500"
+                                                     :class="msg.autorId === usuarioAtual.id ? 'flex-row-reverse' : ''">
+                                                    <button @click="abrirPerfilRapido(msg.autorId, msg.autor, msg.autorFotoUrl, msg.autorEhAdmin)" class="font-bold text-slate-400 hover:text-indigo-400 transition-fast" x-text="msg.autor"></button>
+                                                    <span x-show="msg.autorEhAdmin" class="px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 text-[9px] font-bold uppercase">Admin</span>
+                                                    <span x-text="new Date(msg.criadoEm).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})"></span>
+                                                    <span x-show="msg.editado" class="italic">(editado)</span>
+                                                </div>
+
+                                                <template x-if="mensagemEditandoId !== msg.id">
+                                                    <div class="rounded-2xl px-4 py-2.5 text-sm break-words shadow-sm"
+                                                         :class="msg.autorId === usuarioAtual.id ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-slate-800 text-slate-200 rounded-tl-sm'"
+                                                         x-html="linkify(msg.conteudo)">
+                                                    </div>
+                                                </template>
+
+                                                <template x-if="mensagemEditandoId === msg.id">
+                                                    <div class="w-full flex gap-2">
+                                                        <input
+                                                            type="text"
+                                                            x-model="mensagemEditandoTexto"
+                                                            @keydown.enter="salvarEdicaoMensagem()"
+                                                            @keydown.escape="cancelarEdicaoMensagem()"
+                                                            class="flex-grow bg-slate-800 border border-indigo-500 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none"
+                                                        />
+                                                        <button @click="salvarEdicaoMensagem()" class="text-emerald-400 hover:text-emerald-300 px-2"><i class="fa-solid fa-check"></i></button>
+                                                        <button @click="cancelarEdicaoMensagem()" class="text-slate-500 hover:text-slate-300 px-2"><i class="fa-solid fa-xmark"></i></button>
+                                                    </div>
+                                                </template>
+
+                                                <div class="flex items-center gap-3 text-[11px]" x-show="mensagemEditandoId !== msg.id">
+                                                    <button x-show="msg.podeEditar" @click="iniciarEdicaoMensagem(msg)" class="text-slate-500 hover:text-indigo-400 transition-fast">
+                                                        <i class="fa-solid fa-pen"></i> Editar
+                                                    </button>
+                                                    <button x-show="msg.podeApagar" @click="apagarMensagem(msg)" class="text-slate-500 hover:text-rose-400 transition-fast">
+                                                        <i class="fa-solid fa-trash"></i> Apagar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                    <div x-show="chatMensagens.length === 0" class="text-center text-slate-500 py-12">
+                                        <i class="fa-regular fa-comment-dots text-3xl mb-2 block text-slate-700 anim-bounce-soft"></i>
+                                        <span x-show="!chatConversaCom">Nenhuma mensagem ainda. Seja o primeiro a escrever!</span>
+                                        <span x-show="chatConversaCom">Nenhuma mensagem ainda com <span x-text="chatConversaCom ? chatConversaCom.nome : ''"></span>. Diga oi!</span>
+                                    </div>
+                                </div>
+
+                                <form @submit.prevent="enviarMensagemChat" class="p-4 border-t border-slate-800 flex gap-3">
+                                    <input
+                                        type="text"
+                                        x-model="novaMensagemChat"
+                                        maxlength="2000"
+                                        :placeholder="chatConversaCom ? ('Mensagem privada para ' + chatConversaCom.nome + '...') : 'Escreva uma mensagem... (links são detectados automaticamente)'"
+                                        class="flex-grow bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    />
+                                    <button
+                                        type="submit"
+                                        :disabled="!novaMensagemChat.trim()"
+                                        class="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-5 py-2.5 rounded-xl transition-fast flex items-center gap-2"
+                                    >
+                                        <i class="fa-solid fa-paper-plane"></i>
+                                        <span class="hidden sm:inline">Enviar</span>
+                                    </button>
+                                </form>
+
+                                <!-- POPOVER: PERFIL RÁPIDO -->
+                                <div x-show="perfilRapido" @click.outside="fecharPerfilRapido" x-transition
+                                     class="absolute inset-0 bg-slate-950/60 flex items-center justify-center z-30" style="display:none;">
+                                    <div class="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl w-64 p-5 text-center relative">
+                                        <button @click="fecharPerfilRapido" class="absolute top-3 right-3 text-slate-500 hover:text-slate-300"><i class="fa-solid fa-xmark"></i></button>
+                                        <template x-if="perfilRapido">
+                                            <div>
+                                                <div class="w-16 h-16 rounded-2xl overflow-hidden bg-slate-800 border border-slate-700 flex items-center justify-center text-lg font-bold text-slate-400 mx-auto mb-3">
+                                                    <img x-show="perfilRapido.fotoUrl" :src="perfilRapido.fotoUrl" class="w-full h-full object-cover" />
+                                                    <span x-show="!perfilRapido.fotoUrl" x-text="iniciaisUsuario(perfilRapido)"></span>
+                                                </div>
+                                                <p class="font-bold text-slate-100" x-text="perfilRapido.nome"></p>
+                                                <p class="text-[11px] text-slate-500 mb-4" x-text="perfilRapido.ehAdmin ? 'Administrador' : 'Usuário'"></p>
+                                                <button @click="iniciarConversaPrivada(perfilRapido)" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-2.5 rounded-xl transition-fast flex items-center justify-center gap-2 text-sm">
+                                                    <i class="fa-solid fa-comment-dots"></i> Mensagem Privada
+                                                </button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
