@@ -15,8 +15,33 @@
                                     </h3>
                                     <p class="text-xs text-slate-500 mb-4">Proporção operacional entre Matrizes e Filiais cadastradas.</p>
                                 </div>
-                                <div class="relative h-44 w-full flex items-center justify-center">
-                                    <canvas id="chartCidades"></canvas>
+                                <div class="h-44 w-full flex flex-col justify-center gap-5 px-1">
+                                    <template x-for="item in graficoCidades()" :key="item.label">
+                                        <div class="flex items-center gap-3 group cursor-default"
+                                            @mouseenter="cidadeBarHover = item.label" @mouseleave="cidadeBarHover = null">
+                                            <span class="w-12 shrink-0 text-xs font-semibold transition-fast" :class="cidadeBarHover === item.label ? 'text-slate-100' : 'text-slate-400'" x-text="item.label"></span>
+                                            <div class="relative flex-grow bg-slate-800 rounded-lg h-8 overflow-visible">
+                                                <div class="w-full h-full rounded-lg overflow-hidden">
+                                                    <div
+                                                        class="h-full rounded-lg flex items-center justify-end pr-2.5 transition-all duration-500 ease-out group-hover:brightness-125"
+                                                        :class="item.cor"
+                                                        :style="'width: ' + Math.max(item.percentual, item.valor > 0 ? 6 : 0) + '%'"
+                                                    >
+                                                        <span class="text-[11px] font-bold text-white" x-show="item.percentual > 18" x-text="item.valor"></span>
+                                                    </div>
+                                                </div>
+                                                <!-- Tooltip ao passar o mouse -->
+                                                <div x-show="cidadeBarHover === item.label" x-transition.opacity.duration.150ms
+                                                    class="absolute -top-9 left-0 z-10 bg-slate-950 border border-slate-700 text-slate-100 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg shadow-lg whitespace-nowrap pointer-events-none">
+                                                    <span x-text="item.label"></span>:
+                                                    <span class="font-extrabold" x-text="item.valor"></span>
+                                                    <span class="text-slate-400 font-normal" x-text="'(' + item.percentualTotal + '%)'"></span>
+                                                </div>
+                                            </div>
+                                            <span class="w-5 text-right text-xs font-bold text-slate-300" x-show="item.percentual <= 18" x-text="item.valor"></span>
+                                        </div>
+                                    </template>
+                                    <div x-show="cidades.length === 0" class="text-center text-slate-600 text-xs">Nenhuma cidade cadastrada ainda.</div>
                                 </div>
                             </div>
 
@@ -27,8 +52,41 @@
                                     </h3>
                                     <p class="text-xs text-slate-500 mb-4">Resumo visual da validade e vigência de seus informativos.</p>
                                 </div>
-                                <div class="relative h-44 w-full flex items-center justify-center">
-                                    <canvas id="chartAvisos"></canvas>
+                                <div class="h-44 w-full flex items-center gap-4">
+                                    <div class="relative h-full aspect-square shrink-0 mx-auto"
+                                        @avisos-pizza-hover.window="avisoHover = $event.detail"
+                                        @avisos-pizza-leave.window="avisoHover = null">
+                                        <svg viewBox="0 0 100 100" class="w-full h-full -rotate-90">
+                                            <circle cx="50" cy="50" r="40" fill="none" stroke="#1e293b" stroke-width="14"></circle>
+                                            <g x-html="graficoAvisosSvg()"></g>
+                                        </svg>
+                                        <!-- Centro do donut: mostra o total por padrão, e troca para os
+                                             dados da fatia em foco (mouse ou legenda) com uma transição suave. -->
+                                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-2">
+                                            <template x-if="!avisoHover">
+                                                <div class="fade-in">
+                                                    <span class="text-xl font-extrabold text-white" x-text="avisos.length"></span>
+                                                    <span class="block text-[9px] uppercase tracking-wide text-slate-500">Avisos</span>
+                                                </div>
+                                            </template>
+                                            <template x-if="avisoHover">
+                                                <div class="fade-in">
+                                                    <span class="text-xl font-extrabold" :style="'color:' + avisoHover.cor" x-text="avisoHover.valor"></span>
+                                                    <span class="block text-[9px] uppercase tracking-wide text-slate-400 truncate max-w-[70px]" x-text="avisoHover.label + ' · ' + avisoHover.percentual + '%'"></span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-col gap-2 min-w-0">
+                                        <template x-for="seg in graficoAvisos()" :key="'legenda-' + seg.label">
+                                            <span class="flex items-center gap-1.5 text-[11px] truncate rounded-md px-1.5 py-1 -mx-1.5 cursor-default transition-fast"
+                                                :class="avisoHover && avisoHover.label === seg.label ? 'bg-slate-800 text-slate-100' : 'text-slate-400'"
+                                                @mouseenter="avisoHover = seg" @mouseleave="avisoHover = null">
+                                                <span class="w-2.5 h-2.5 rounded-full shrink-0" :style="'background:' + seg.cor"></span>
+                                                <span x-text="seg.label + ' (' + seg.valor + ')'" class="truncate"></span>
+                                            </span>
+                                        </template>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -428,9 +486,14 @@
                                         <div>
                                             <label class="block text-sm font-semibold text-slate-300 mb-1.5">Logotipo (opcional)</label>
                                             <div class="flex items-center gap-3">
-                                                <div class="w-12 h-12 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0">
+                                                <div class="relative w-12 h-12 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0 group">
                                                     <img x-show="configForm.logoUrl" :src="configForm.logoUrl" class="w-full h-full object-cover" />
                                                     <i x-show="!configForm.logoUrl" class="fa-solid fa-image text-slate-600"></i>
+                                                    <button type="button" x-show="configForm.logoUrl" @click="removerLogoSite()"
+                                                        title="Remover logotipo"
+                                                        class="absolute inset-0 bg-slate-950/70 opacity-0 group-hover:opacity-100 transition-fast flex items-center justify-center text-rose-400 hover:text-rose-300">
+                                                        <i class="fa-solid fa-trash-can text-sm"></i>
+                                                    </button>
                                                 </div>
                                                 <input type="file" accept="image/png,image/jpeg,image/webp" @change="enviarLogoSite($event)"
                                                     class="flex-1 text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-700 file:text-white hover:file:bg-slate-600 file:cursor-pointer cursor-pointer" />
@@ -451,9 +514,14 @@
 
                                         <template x-if="configForm.tipoFundo === 'imagem'">
                                             <div class="space-y-2">
-                                                <div class="w-full h-36 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex items-center justify-center">
+                                                <div class="relative w-full h-36 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex items-center justify-center group">
                                                     <img x-show="configForm.imagemFundoUrl" :src="configForm.imagemFundoUrl" class="w-full h-full object-cover" />
                                                     <i x-show="!configForm.imagemFundoUrl" class="fa-solid fa-panorama text-3xl text-slate-600"></i>
+                                                    <button type="button" x-show="configForm.imagemFundoUrl" @click="removerImagemFundoSite()"
+                                                        class="absolute top-2 right-2 w-8 h-8 rounded-lg bg-slate-950/80 border border-slate-700 opacity-0 group-hover:opacity-100 transition-fast flex items-center justify-center text-rose-400 hover:text-rose-300 hover:border-rose-500/50"
+                                                        title="Remover imagem de fundo">
+                                                        <i class="fa-solid fa-trash-can text-xs"></i>
+                                                    </button>
                                                 </div>
                                                 <input type="file" accept="image/png,image/jpeg,image/webp" @change="enviarImagemFundoSite($event)"
                                                     class="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 file:cursor-pointer cursor-pointer" />
@@ -463,9 +531,14 @@
 
                                         <template x-if="configForm.tipoFundo === 'video'">
                                             <div class="space-y-2">
-                                                <div class="w-full h-36 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex items-center justify-center">
+                                                <div class="relative w-full h-36 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex items-center justify-center group">
                                                     <video x-show="configForm.videoFundoUrl" :src="configForm.videoFundoUrl" autoplay muted loop playsinline class="w-full h-full object-cover"></video>
                                                     <i x-show="!configForm.videoFundoUrl" class="fa-solid fa-clapperboard text-3xl text-slate-600"></i>
+                                                    <button type="button" x-show="configForm.videoFundoUrl" @click="removerVideoFundoSite()"
+                                                        class="absolute top-2 right-2 w-8 h-8 rounded-lg bg-slate-950/80 border border-slate-700 opacity-0 group-hover:opacity-100 transition-fast flex items-center justify-center text-rose-400 hover:text-rose-300 hover:border-rose-500/50"
+                                                        title="Remover vídeo de fundo">
+                                                        <i class="fa-solid fa-trash-can text-xs"></i>
+                                                    </button>
                                                 </div>
                                                 <input type="file" accept="video/mp4,video/webm" @change="enviarVideoFundoSite($event)"
                                                     class="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 file:cursor-pointer cursor-pointer" />

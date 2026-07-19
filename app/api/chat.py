@@ -212,6 +212,12 @@ def remover_membro_grupo(grupo_id, user_id):
 # ------------------------------------------------------------------
 @api_bp.get("/chat/mensagens")
 @aprovado_required
+# Rota de polling (a cada 4s enquanto o chat está aberto, ~900 req/hora só
+# de um usuário) — precisa de limite próprio, senão herda o default_limits
+# global de 200/hora e passa a devolver 429 (silenciosamente ignorado pelo
+# front-end) depois de poucos minutos de uso, fazendo o chat "travar" sem
+# atualizar mensagens novas.
+@limiter.limit("90 per minute")
 def listar_mensagens():
     """Retorna as últimas mensagens (mais antigas primeiro), pronto para
     ser exibido direto na tela — o front faz polling simples nesta rota.

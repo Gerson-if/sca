@@ -79,6 +79,8 @@
                                             </span>
                                             <input
                                                 type="text"
+                                                name="username"
+                                                autocomplete="username"
                                                 placeholder="seu.usuario"
                                                 x-model="loginUser"
                                                 class="w-full pl-10 pr-4 py-3 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-slate-800/60 text-slate-100 placeholder-slate-500 transition-fast"
@@ -94,6 +96,8 @@
                                             </span>
                                             <input
                                                 :type="showPass ? 'text' : 'password'"
+                                                name="password"
+                                                autocomplete="current-password"
                                                 placeholder="••••••••"
                                                 x-model="loginPass"
                                                 class="w-full pl-10 pr-11 py-3 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-slate-800/60 text-slate-100 placeholder-slate-500 transition-fast"
@@ -104,17 +108,10 @@
                                         </div>
                                     </div>
 
-                                    <label class="flex items-start gap-2.5 text-xs text-slate-400 cursor-pointer select-none">
-                                        <input
-                                            type="checkbox"
-                                            x-model="manterConectado"
-                                            class="mt-0.5 w-4 h-4 rounded border-slate-700 bg-slate-800/60 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0"
-                                        />
-                                        <span>
-                                            Manter conectado neste dispositivo
-                                            <span class="block text-[11px] text-slate-500 mt-0.5">Só marque em computador pessoal. Em computador compartilhado, deixe desmarcado — a sessão encerra sozinha ao fechar o navegador.</span>
-                                        </span>
-                                    </label>
+                                    <p class="text-[11px] text-slate-500 leading-relaxed">
+                                        <i class="fa-solid fa-circle-info mr-1"></i>
+                                        Por segurança, a sessão encerra automaticamente ao fechar o navegador. Para não digitar a senha toda vez, use a opção de <span class="text-slate-400 font-medium">salvar usuário e senha</span> que o seu navegador oferece ao entrar.
+                                    </p>
 
                                     <template x-if="loginError">
                                         <div class="flex items-center gap-2 text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl px-3.5 py-2.5 text-sm">
@@ -139,6 +136,8 @@
                                         <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Escolha um usuário</label>
                                         <input
                                             type="text"
+                                            name="new-username"
+                                            autocomplete="username"
                                             placeholder="Mínimo 3 caracteres"
                                             x-model="registroUser"
                                             class="w-full px-4 py-3 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-800/60 text-slate-100 placeholder-slate-500 transition-fast"
@@ -148,6 +147,8 @@
                                         <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Escolha uma senha</label>
                                         <input
                                             type="password"
+                                            name="new-password"
+                                            autocomplete="new-password"
                                             placeholder="Mínimo 6 caracteres"
                                             x-model="registroPass"
                                             class="w-full px-4 py-3 border border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-800/60 text-slate-100 placeholder-slate-500 transition-fast"

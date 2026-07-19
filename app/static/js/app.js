@@ -80,10 +80,6 @@ function app() {
         loginUser: '',
         loginPass: '',
         loginError: '',
-        // Desmarcado por padrão: em computador/navegador compartilhado, a
-        // sessão deve morrer ao fechar o navegador. Só vira True quando a
-        // própria pessoa opta por "manter conectado" (dispositivo pessoal).
-        manterConectado: false,
         // Trava contra duplo-clique/duplo-envio do formulário: sem isso,
         // duas chamadas de /auth/login concorrentes usam o MESMO token CSRF
         // (obtido uma vez ao carregar a página); a primeira que responde já
@@ -99,7 +95,6 @@ function app() {
         registroSucesso: '',
 
         searchQuery: '',
-        publicTab: 'cidades', // 'cidades' | 'chat'
 
         adminTab: 'cidades',
 
@@ -160,6 +155,13 @@ function app() {
         // -------------------- CARROSSEL DE AVISOS --------------------
         carrosselIndex: 0,
         carrosselTimer: null,
+        // Tempo que cada aviso fica visível antes de avançar sozinho. 8s dá
+        // tempo confortável de ler um texto mais longo.
+        carrosselIntervaloMs: 8000,
+        // Pausa o avanço automático enquanto o mouse está sobre o carrossel
+        // ou a aba do navegador está em segundo plano — evita que o slide
+        // troque sozinho bem no momento em que a pessoa está lendo.
+        carrosselPausado: false,
 
         // -------------------- DETALHE DA CIDADE (modal público) --------------------
         detalheCidadeAberto: false,
@@ -170,9 +172,6 @@ function app() {
         formErrorCidade: '',
         formErrorAviso: '',
         enviandoImagem: false,
-
-        chartCidadesInst: null,
-        chartAvisosInst: null,
 
         cidadeForm: {
             id: null,
@@ -222,6 +221,12 @@ function app() {
         novaMensagemChat: '',
         mensagemEditandoId: null,
         mensagemEditandoTexto: '',
+        // Confirmacao de exclusao de mensagem: por dentro do proprio chat
+        // (ver apagarMensagem/confirmarApagarMensagem/cancelarApagarMensagem
+        // mais abaixo), em vez do modal generico de confirmacao de tela
+        // cheia usado pelo resto do app - ver comentario em apagarMensagem.
+        mensagemApagandoId: null,
+        apagandoMensagem: false,
         chatTimer: null,
         // Modo da conversa: null = chat geral da equipe; um objeto de
         // usuário = conversa privada (direct message) com essa pessoa.
@@ -253,10 +258,17 @@ function app() {
 
         dataHora: '',
 
+        // Segmento/barra sob o mouse nos gráficos do painel admin (null =
+        // nenhum). Alimenta o texto central do donut, o destaque da fatia
+        // e o tooltip das barras — ver graficoAvisos()/graficoCidades().
+        avisoHover: null,
+        cidadeBarHover: null,
+
         // -------------------- NOTIFICAÇÕES E CONFIRMAÇÕES --------------------
         toast: { show: false, mensagem: '', tipo: 'sucesso', icone: 'fa-circle-check' },
         toastTimeout: null,
-        confirmacao: { show: false, titulo: '', mensagem: '', acao: null },
+        confirmacao: { show: false, titulo: '', mensagem: '', acao: null, textoConfirmar: 'Confirmar', perigo: true },
+        confirmandoAcao: false,
 
         async init() {
             // Antes até de saber se há sessão: aplica um tema "de visitante"
@@ -270,18 +282,18 @@ function app() {
             this.atualizarDataHora();
             setInterval(() => this.atualizarDataHora(), 1000);
 
-            // Carrossel de avisos: avança automaticamente. Intervalo maior
-            // (10s) dá tempo de ler avisos com texto mais longo antes de
-            // trocar de slide.
-            this.carrosselTimer = setInterval(() => {
-                const total = this.avisosPublicos().length;
-                if (total > 1) this.carrosselIndex = (this.carrosselIndex + 1) % total;
-            }, 10000);
+            // Carrossel de avisos: avança automaticamente, mas pausa sozinho
+            // se a pessoa passar o mouse por cima ou trocar de aba — ver
+            // iniciarCarrosselAutoplay().
+            this.iniciarCarrosselAutoplay();
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) this.pausarCarrossel();
+                else this.retomarCarrossel();
+            });
 
-            // Chat: consulta a cada 4s quando a aba de chat está visível.
+            // Chat: consulta a cada 4s enquanto o chat flutuante está aberto.
             this.chatTimer = setInterval(() => {
-                const vendoChatEmAba = this.page === 'public' && this.publicTab === 'chat';
-                if (this.podeVerAreaPublica() && (vendoChatEmAba || this.chatFlutuanteAberto)) {
+                if (this.podeVerAreaPublica() && this.chatFlutuanteAberto) {
                     this.carregarChat(true);
                 }
             }, 4000);
@@ -290,7 +302,6 @@ function app() {
                 if (this.podeVerAreaPublica()) {
                     this.carregarAvisos();
                 }
-                this.renderizarOuAtualizarGraficos();
             }, 30000);
 
             // Sincronização quase em tempo real: a cada poucos segundos,
@@ -349,9 +360,6 @@ function app() {
                         await this.carregarConfiguracaoCards();
                         await this.atualizarMarcadoresSync();
                         this.pedirPermissaoNotificacao();
-                        if (data.user.role === 'admin') {
-                            this.$nextTick(() => this.renderizarOuAtualizarGraficos());
-                        }
                     }
                 }
                 // Visitante sem sessão válida: permanece na landing page
@@ -370,8 +378,17 @@ function app() {
         },
 
         async carregarAvisos() {
+            // Guarda qual aviso está aberto no carrossel ANTES de recarregar
+            // — a lista pode vir em outra ordem/tamanho (edição muda a data
+            // de ordenação, exclusão encolhe a lista, expiração some com um
+            // item). Sem isso, `carrosselIndex` (um número) passava a
+            // apontar para outro aviso ou para nada, e o carrossel parecia
+            // travar ou "voltar sozinho" depois de qualquer alteração.
+            const listaAtual = this.avisosPublicos();
+            const idAtual = listaAtual[this.carrosselIndex] ? listaAtual[this.carrosselIndex].id : null;
             try {
                 this.avisos = await apiFetch('/avisos');
+                this.sincronizarIndiceCarrossel(idAtual);
             } catch (e) {
                 this.notificar(`Não foi possível carregar os avisos (${e.message}).`, 'erro');
             }
@@ -388,16 +405,9 @@ function app() {
 
         // -------------------- NAVEGAÇÃO --------------------
         goLanding() {
-            this.destruirGraficos();
             this.page = 'landing';
         },
         goPublic() {
-            // Evita o bug de gráficos "mortos": ao sair do admin, o <template
-            // x-if="page === 'admin'"> remove os <canvas> do DOM, mas as
-            // instâncias do Chart.js continuavam vivas em memória e quebravam
-            // ao tentar atualizar um canvas que não existe mais. Destruímos
-            // aqui para forçar recriação limpa na próxima vez que abrir o admin.
-            this.destruirGraficos();
             // Visitante sem sessão aprovada nunca vê a área pública — cai
             // sempre na landing page, sem tentar carregar dados do sistema.
             if (!this.podeVerAreaPublica()) {
@@ -413,11 +423,13 @@ function app() {
         goAdmin() {
             if (this.usuarioAtual.role !== 'admin') return;
             this.page = 'admin';
+            this.configForm = { ...this.configuracaoSite };
+            // Os gráficos (SVG/HTML reativos) são recalculados sozinhos a
+            // partir de `cidades`/`avisos` assim que os dados chegarem —
+            // não há canvas, instância ou timing manual para gerenciar.
             this.carregarCidades();
             this.carregarAvisos();
             this.carregarUsuarios();
-            this.configForm = { ...this.configuracaoSite };
-            this.$nextTick(() => this.renderizarOuAtualizarGraficos());
         },
         goLogin() {
             this.loginError = '';
@@ -429,12 +441,6 @@ function app() {
             if (aba === 'usuarios') this.carregarUsuarios();
             if (aba === 'landing') this.configForm = { ...this.configuracaoSite };
             if (aba === 'personalizacao') this.abrirPersonalizacaoCards();
-            this.$nextTick(() => this.renderizarOuAtualizarGraficos());
-        },
-
-        destruirGraficos() {
-            if (this.chartCidadesInst) { this.chartCidadesInst.destroy(); this.chartCidadesInst = null; }
-            if (this.chartAvisosInst) { this.chartAvisosInst.destroy(); this.chartAvisosInst = null; }
         },
 
         // -------------------- FILTRO DE PESQUISA (CIDADES) --------------------
@@ -472,7 +478,6 @@ function app() {
                     body: JSON.stringify({
                         username: this.loginUser,
                         password: this.loginPass,
-                        manterConectado: this.manterConectado,
                     }),
                 });
                 // A sessão foi recriada no backend (mitigação de fixação de
@@ -493,7 +498,6 @@ function app() {
                 if (resp.user.role === 'admin') {
                     await this.carregarUsuarios();
                     this.configForm = { ...this.configuracaoSite };
-                    this.$nextTick(() => this.renderizarOuAtualizarGraficos());
                 }
             } catch (e) {
                 // Contas pendentes/reprovadas nunca ganham sessão no backend
@@ -547,8 +551,6 @@ function app() {
             this.contaReprovada = false;
             this.loginUser = '';
             this.loginPass = '';
-            this.manterConectado = false;
-            this.destruirGraficos();
             this.page = 'landing';
             this.cidades = [];
             this.avisos = [];
@@ -568,7 +570,6 @@ function app() {
             this.contaReprovada = false;
             this.loginUser = '';
             this.loginPass = '';
-            this.manterConectado = false;
             this.loginModo = 'entrar';
             this.page = 'landing';
         },
@@ -743,6 +744,64 @@ function app() {
             return this.avisos.filter(a => a.status !== 'Expirado');
         },
 
+        // -------------------- CONTROLE DO CARROSSEL DE AVISOS --------------------
+        iniciarCarrosselAutoplay() {
+            if (this.carrosselTimer) clearInterval(this.carrosselTimer);
+            this.carrosselTimer = setInterval(() => {
+                if (this.carrosselPausado) return;
+                const total = this.avisosPublicos().length;
+                if (total > 1) this.carrosselIndex = (this.carrosselIndex + 1) % total;
+            }, this.carrosselIntervaloMs);
+        },
+        // Reinicia a contagem do autoplay a partir de agora — chamado toda
+        // vez que a pessoa navega manualmente (seta ou bolinha), para o
+        // avanço automático não "roubar" o slide que ela acabou de escolher
+        // poucos segundos depois.
+        reiniciarAutoplayCarrossel() {
+            this.iniciarCarrosselAutoplay();
+        },
+        pausarCarrossel() {
+            this.carrosselPausado = true;
+        },
+        retomarCarrossel() {
+            this.carrosselPausado = false;
+        },
+        proximoSlideCarrossel() {
+            const total = this.avisosPublicos().length;
+            if (total < 1) return;
+            this.carrosselIndex = (this.carrosselIndex + 1) % total;
+            this.reiniciarAutoplayCarrossel();
+        },
+        slideAnteriorCarrossel() {
+            const total = this.avisosPublicos().length;
+            if (total < 1) return;
+            this.carrosselIndex = (this.carrosselIndex - 1 + total) % total;
+            this.reiniciarAutoplayCarrossel();
+        },
+        irParaSlideCarrossel(i) {
+            this.carrosselIndex = i;
+            this.reiniciarAutoplayCarrossel();
+        },
+        // Mantém o carrossel "grudado" no MESMO aviso (por id) sempre que a
+        // lista muda. Se o aviso que estava em exibição não existe mais
+        // (foi excluído ou expirou), cai de volta para um índice válido em
+        // vez de ficar apontando para fora da lista.
+        sincronizarIndiceCarrossel(idAnterior) {
+            const lista = this.avisosPublicos();
+            if (lista.length === 0) {
+                this.carrosselIndex = 0;
+                return;
+            }
+            if (idAnterior != null) {
+                const novoIndice = lista.findIndex(a => a.id === idAnterior);
+                if (novoIndice !== -1) {
+                    this.carrosselIndex = novoIndice;
+                    return;
+                }
+            }
+            this.carrosselIndex = Math.min(this.carrosselIndex, lista.length - 1);
+        },
+
         // -------------------- DETALHE DA CIDADE --------------------
         abrirDetalheCidade(cidade) {
             this.cidadeDetalhe = cidade;
@@ -763,15 +822,38 @@ function app() {
         },
 
         // -------------------- CONFIRMAÇÃO DE AÇÕES SENSÍVEIS --------------------
-        pedirConfirmacao(titulo, mensagem, acao) {
-            this.confirmacao = { show: true, titulo, mensagem, acao };
+        // `opcoes.textoConfirmar` é o rótulo do botão (ex.: "Excluir Aviso",
+        // "Sair do Grupo") — evita que toda confirmação diga genericamente
+        // "Confirmar Exclusão" mesmo quando a ação não é uma exclusão, o
+        // que confundia quem não é da área técnica. `opcoes.perigo` (padrão
+        // true) controla se o botão usa a cor de alerta (vermelho) ou uma
+        // cor neutra, para ações que não são destrutivas.
+        pedirConfirmacao(titulo, mensagem, acao, opcoes = {}) {
+            this.confirmacao = {
+                show: true,
+                titulo,
+                mensagem,
+                acao,
+                textoConfirmar: opcoes.textoConfirmar || 'Confirmar',
+                perigo: opcoes.perigo !== false,
+            };
         },
-        confirmarAcao() {
-            if (typeof this.confirmacao.acao === 'function') this.confirmacao.acao();
-            this.confirmacao = { show: false, titulo: '', mensagem: '', acao: null };
+        async confirmarAcao() {
+            // Trava contra duplo-clique: sem isso, clicar duas vezes rápido
+            // disparava a exclusão/ação duas vezes em paralelo.
+            if (this.confirmandoAcao) return;
+            const acao = this.confirmacao.acao;
+            this.confirmandoAcao = true;
+            try {
+                if (typeof acao === 'function') await acao();
+            } finally {
+                this.confirmandoAcao = false;
+                this.confirmacao = { show: false, titulo: '', mensagem: '', acao: null, textoConfirmar: 'Confirmar', perigo: true };
+            }
         },
         cancelarConfirmacao() {
-            this.confirmacao = { show: false, titulo: '', mensagem: '', acao: null };
+            if (this.confirmandoAcao) return; // não deixa cancelar no meio de uma ação em andamento
+            this.confirmacao = { show: false, titulo: '', mensagem: '', acao: null, textoConfirmar: 'Confirmar', perigo: true };
         },
 
         // -------------------- MODAIS CIDADE --------------------
@@ -857,6 +939,24 @@ function app() {
             }
         },
 
+        // Os arquivos já enviados (logo/fundo/vídeo) só podiam ser
+        // substituídos por um novo upload — não havia como limpar e voltar
+        // ao estado "sem mídia". Estes métodos apenas limpam a referência
+        // no formulário; a mudança só é persistida quando a página é salva
+        // (mesmo padrão de "rascunho" que o restante do configForm já usa).
+        removerLogoSite() {
+            this.configForm.logoUrl = '';
+            this.notificar('Logotipo removido. Clique em "Salvar" para confirmar.', 'aviso');
+        },
+        removerImagemFundoSite() {
+            this.configForm.imagemFundoUrl = '';
+            this.notificar('Imagem de fundo removida. Clique em "Salvar" para confirmar.', 'aviso');
+        },
+        removerVideoFundoSite() {
+            this.configForm.videoFundoUrl = '';
+            this.notificar('Vídeo removido. Clique em "Salvar" para confirmar.', 'aviso');
+        },
+
         async salvarConfiguracaoSite() {
             this.formErrorConfig = '';
             if (!this.configForm.nomeEmpresa.trim()) {
@@ -896,117 +996,87 @@ function app() {
             return `${pad(fim.getDate())}/${pad(fim.getMonth() + 1)}/${fim.getFullYear()} às ${pad(fim.getHours())}:${pad(fim.getMinutes())}`;
         },
 
-        // -------------------- GRÁFICOS (CHART.JS) --------------------
-        renderizarOuAtualizarGraficos() {
-            if (!this.loggedIn || this.page !== 'admin') return;
-            // Trava simples contra chamadas sobrepostas: se duas ações (ex.:
-            // excluir um aviso + a sincronização automática) disparassem
-            // isso quase ao mesmo tempo, uma segunda chamada de
-            // chart.update() no meio da animação da primeira é o que
-            // corrompe o estado interno do Chart.js e gera o erro
-            // "Cannot set properties of undefined (setting 'fullSize')".
-            if (this._atualizandoGraficos) return;
-            this._atualizandoGraficos = true;
+        // -------------------- GRÁFICOS (SVG/HTML REATIVOS) --------------------
+        // Antes isso era feito com Chart.js desenhando em <canvas>: exigia
+        // criar/destruir instâncias manualmente toda vez que a página
+        // trocava (o <template x-if="page === 'admin'"> remove e recria o
+        // <canvas> do zero a cada navegação), e qualquer descompasso nesse
+        // ciclo de vida gerava os erros de "carregamento" relatados
+        // (canvas morto, corrida entre chamadas, dimensão zero etc.).
+        //
+        // A troca para elementos SVG/HTML comuns, com os valores calculados
+        // aqui e amarrados via x-for/x-text/:style, elimina essa classe
+        // inteira de bug: não há instância para gerenciar, não há timing de
+        // DOM para acertar — o Alpine simplesmente redesenha sozinho toda
+        // vez que `cidades` ou `avisos` mudam, em qualquer página.
+        graficoCidades() {
+            const matrizes = this.cidades.filter(c => c.perfil === 'matriz').length;
+            const filiais = this.cidades.filter(c => c.perfil === 'filial').length;
+            const maior = Math.max(matrizes, filiais, 1);
+            const total = Math.max(matrizes + filiais, 1);
+            return [
+                // `percentual` é relativo à maior barra (só controla o
+                // comprimento visual); `percentualTotal` é a fatia real
+                // sobre o total de cidades, usada no tooltip do hover.
+                { label: 'Matriz', valor: matrizes, percentual: (matrizes / maior) * 100, percentualTotal: Math.round((matrizes / total) * 100), cor: 'bg-blue-500' },
+                { label: 'Filiais', valor: filiais, percentual: (filiais / maior) * 100, percentualTotal: Math.round((filiais / total) * 100), cor: 'bg-slate-500' },
+            ];
+        },
+        graficoAvisos() {
+            const raio = 40;
+            const circunferencia = 2 * Math.PI * raio;
+            const dados = [
+                { label: 'Ativos', valor: this.avisos.filter(a => a.status === 'Ativo').length, cor: '#10b981' },
+                { label: 'Aguardando', valor: this.avisos.filter(a => a.status === 'Aguardando').length, cor: '#f59e0b' },
+                { label: 'Expirados', valor: this.avisos.filter(a => a.status === 'Expirado').length, cor: '#f43f5e' },
+            ];
+            const total = dados.reduce((soma, d) => soma + d.valor, 0);
+            let acumulado = 0;
+            return dados.map(d => {
+                const fracao = total > 0 ? d.valor / total : 0;
+                const comprimento = fracao * circunferencia;
+                const segmento = {
+                    ...d,
+                    circunferencia,
+                    percentual: Math.round(fracao * 100),
+                    dasharray: `${comprimento} ${circunferencia - comprimento}`,
+                    dashoffset: -acumulado * circunferencia,
+                };
+                acumulado += fracao;
+                return segmento;
+            });
+        },
 
-            try {
-                const matrizes = this.cidades.filter(c => c.perfil === 'matriz').length;
-                const filiais = this.cidades.filter(c => c.perfil === 'filial').length;
-
-                const ativos = this.avisos.filter(a => a.status === 'Ativo').length;
-                const aguardando = this.avisos.filter(a => a.status === 'Aguardando').length;
-                const expirados = this.avisos.filter(a => a.status === 'Expirado').length;
-
-                const fontColor = '#94a3b8';
-                Chart.defaults.color = fontColor;
-                Chart.defaults.font.family = "'Inter', sans-serif";
-
-                // Se o canvas não estiver de fato visível/renderizado
-                // (offsetParent null = display:none em algum ancestral, ou
-                // o elemento foi trocado por outro depois de um x-if),
-                // qualquer tentativa de desenhar deixa o Chart.js com
-                // dimensões zero — origem clássica desse erro. Melhor
-                // pular silenciosamente; a próxima chamada (ao voltar pra
-                // essa tela) redesenha normalmente.
-                const visivel = (el) => !!el && el.offsetParent !== null;
-
-                const ctxCidades = document.getElementById('chartCidades');
-                if (visivel(ctxCidades)) {
-                    // Sempre destrói e recria em vez de reaproveitar a
-                    // instância antiga com .update(): se o canvas foi
-                    // substituído no DOM (Alpine recria o bloco inteiro do
-                    // admin ao trocar de página) a instância antiga ainda
-                    // aponta pro canvas MORTO, e atualizar isso é
-                    // exatamente o que gera o erro relatado. Recriar do
-                    // zero elimina essa classe inteira de bug.
-                    if (this.chartCidadesInst) {
-                        try { this.chartCidadesInst.destroy(); } catch (e) { /* instância já inválida, ignora */ }
-                        this.chartCidadesInst = null;
-                    }
-                    this.chartCidadesInst = new Chart(ctxCidades, {
-                        type: 'bar',
-                        data: {
-                            labels: ['Matriz', 'Filiais'],
-                            datasets: [{
-                                label: 'Quantidade',
-                                data: [matrizes, filiais],
-                                backgroundColor: ['#3b82f6', '#64748b'],
-                                borderRadius: 8,
-                                borderWidth: 0,
-                                barThickness: 32
-                            }]
-                        },
-                        options: {
-                            indexAxis: 'y',
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            animation: { duration: 300 },
-                            plugins: { legend: { display: false } },
-                            scales: {
-                                x: { grid: { color: '#1e293b' }, ticks: { precision: 0, color: fontColor } },
-                                y: { grid: { display: false }, ticks: { color: fontColor } }
-                            }
-                        }
-                    });
-                }
-
-                const ctxAvisos = document.getElementById('chartAvisos');
-                if (visivel(ctxAvisos)) {
-                    if (this.chartAvisosInst) {
-                        try { this.chartAvisosInst.destroy(); } catch (e) { /* instância já inválida, ignora */ }
-                        this.chartAvisosInst = null;
-                    }
-                    this.chartAvisosInst = new Chart(ctxAvisos, {
-                        type: 'doughnut',
-                        data: {
-                            labels: ['Ativos', 'Aguardando', 'Expirados'],
-                            datasets: [{
-                                data: [ativos, aguardando, expirados],
-                                backgroundColor: ['#10b981', '#f59e0b', '#f43f5e'],
-                                borderWidth: 3,
-                                borderColor: '#0f172a'
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            animation: { duration: 300 },
-                            plugins: {
-                                legend: {
-                                    position: 'right',
-                                    labels: { usePointStyle: true, boxWidth: 6, font: { size: 11 }, color: fontColor }
-                                }
-                            },
-                            cutout: '65%'
-                        }
-                    });
-                }
-            } catch (e) {
-                // Um gráfico é um "nice to have" — nunca deve derrubar a
-                // ação que o disparou (ex.: excluir um aviso). Só loga.
-                console.error('Falha ao desenhar gráficos:', e);
-            } finally {
-                this._atualizandoGraficos = false;
-            }
+        // Monta o markup dos segmentos do donut como uma string de SVG.
+        // Motivo de não usar <template x-for> dentro do <svg> (como antes):
+        // o parser HTML só dá ao <template> um DocumentFragment de verdade
+        // em ".content" dentro do namespace HTML — dentro de conteúdo SVG
+        // isso nem sempre acontece, então o Alpine falha ao clonar o nó
+        // ("Cannot read properties of undefined (reading 'children')") e
+        // nenhum segmento colorido chega a ser desenhado. Gerando o SVG
+        // como texto e injetando com x-html em um <g>, o navegador faz o
+        // parsing corretamente dentro do namespace SVG e as cores voltam
+        // a aparecer.
+        // Cada <circle> injetado via x-html não passa pelo compilador do
+        // Alpine (é HTML cru), então @mouseenter/@mouseleave normais não
+        // funcionam nele. Em vez disso, cada segmento lê seus próprios
+        // dados de `data-*` e dispara um CustomEvent no window; o
+        // container do gráfico (no _admin.html) escuta esse evento com
+        // @avisos-pizza-hover.window / @avisos-pizza-leave.window e
+        // atualiza `avisoHover`, que por sua vez controla o texto central
+        // do donut e o destaque da legenda.
+        graficoAvisosSvg() {
+            return this.graficoAvisos().map(seg => (
+                `<circle cx="50" cy="50" r="40" fill="none" stroke="${seg.cor}" stroke-width="14" ` +
+                `stroke-dasharray="${seg.dasharray}" stroke-dashoffset="${seg.dashoffset}" ` +
+                `class="transition-all duration-300 ease-out cursor-pointer" ` +
+                `style="transform-origin:50px 50px" ` +
+                `data-label="${seg.label}" data-valor="${seg.valor}" data-percentual="${seg.percentual}" data-cor="${seg.cor}" ` +
+                `onmouseenter="this.style.transform='scale(1.06)'; this.style.filter='drop-shadow(0 0 5px ' + this.getAttribute('stroke') + 'aa)'; ` +
+                `window.dispatchEvent(new CustomEvent('avisos-pizza-hover',{detail:{label:this.dataset.label,valor:Number(this.dataset.valor),percentual:Number(this.dataset.percentual),cor:this.dataset.cor}}))" ` +
+                `onmouseleave="this.style.transform=''; this.style.filter=''; window.dispatchEvent(new CustomEvent('avisos-pizza-leave'))" ` +
+                `><title>${seg.label}: ${seg.valor} (${seg.percentual}%)</title></circle>`
+            )).join('');
         },
 
         // -------------------- CIDADES CRUD (via API) --------------------
@@ -1046,7 +1116,6 @@ function app() {
                 }
                 await this.carregarCidades();
                 this.fecharModalCidade();
-                this.renderizarOuAtualizarGraficos();
                 this.notificar(eraEdicao ? `Cidade "${nomeCidade}" atualizada com sucesso.` : `Cidade "${nomeCidade}" cadastrada com sucesso.`, 'sucesso');
             } catch (e) {
                 if (e.httpStatus === 404) {
@@ -1101,12 +1170,12 @@ function app() {
                     try {
                         await apiFetch(`/cidades/${id}`, { method: 'DELETE' });
                         await this.carregarCidades();
-                        this.renderizarOuAtualizarGraficos();
                         this.notificar(`Cidade "${nome}" excluída com sucesso.`, 'aviso');
                     } catch (e) {
                         this.notificar(e.message, 'erro');
                     }
-                }
+                },
+                { textoConfirmar: 'Excluir Cidade', perigo: true }
             );
         },
 
@@ -1169,7 +1238,6 @@ function app() {
                 }
                 await this.carregarAvisos();
                 this.fecharModalAviso();
-                this.renderizarOuAtualizarGraficos();
                 this.notificar(eraEdicao ? `Aviso "${tituloAviso}" atualizado com sucesso.` : `Aviso "${tituloAviso}" publicado com sucesso.`, 'sucesso');
             } catch (e) {
                 if (e.httpStatus === 404) {
@@ -1210,7 +1278,6 @@ function app() {
                     try {
                         await apiFetch(`/avisos/${id}`, { method: 'DELETE' });
                         await this.carregarAvisos();
-                        this.renderizarOuAtualizarGraficos();
                         this.notificar(`Aviso "${titulo}" excluído com sucesso.`, 'aviso');
                     } catch (e) {
                         if (e.httpStatus === 404) {
@@ -1220,7 +1287,8 @@ function app() {
                         }
                         this.notificar(e.message, 'erro');
                     }
-                }
+                },
+                { textoConfirmar: 'Excluir Aviso', perigo: true }
             );
         },
 
@@ -1264,7 +1332,8 @@ function app() {
                     } catch (e) {
                         this.notificar(e.message, 'erro');
                     }
-                }
+                },
+                { textoConfirmar: 'Reprovar Usuário', perigo: true }
             );
         },
 
@@ -1306,7 +1375,8 @@ function app() {
                     } catch (e) {
                         this.notificar(e.message, 'erro');
                     }
-                }
+                },
+                { textoConfirmar: 'Excluir Usuário', perigo: true }
             );
         },
 
@@ -1360,6 +1430,12 @@ function app() {
                 });
                 this.novaMensagemChat = '';
                 await this.carregarChat();
+                // O back-end (/api/sync) ja exclui as proprias mensagens do
+                // usuario logado ao calcular o marcador de chat, entao o
+                // autor nunca e notificado da propria mensagem. Ainda assim
+                // atualizamos o marcador aqui para refletir de imediato o
+                // envio (evita um round-trip a mais no proximo polling).
+                await this.atualizarMarcadoresSync();
             } catch (e) {
                 this.notificar(e.message, 'erro');
             } finally {
@@ -1395,19 +1471,44 @@ function app() {
                 this.notificar(e.message, 'erro');
             }
         },
+        // Apagar mensagem tem confirmacao propria, pequena e dentro do
+        // proprio chat (mesmo padrao do modo de edicao: a mensagem "vira"
+        // um pequeno prompt inline) em vez do modal generico de
+        // confirmacao (pedirConfirmacao/_confirm_modal.html), que e um
+        // overlay de TELA CHEIA renderizado fora do container do chat
+        // flutuante. Isso causava dois problemas: 1) a confirmacao abria
+        // "flutuando" por cima de tudo, fora do contexto da conversa; e
+        // 2) como o overlay fica fora da div do chat flutuante que tem
+        // `@click.outside="chatFlutuanteAberto = false"`, clicar no botao
+        // de confirmar (dentro do overlay, portanto "fora" do chat aos
+        // olhos do Alpine) fechava o painel do chat inteiro logo depois de
+        // apagar a mensagem. Fazendo a confirmacao inline, dentro da
+        // propria lista de mensagens, esses dois problemas desaparecem.
         apagarMensagem(msg) {
-            this.pedirConfirmacao(
-                'Apagar mensagem',
-                'Tem certeza que deseja apagar esta mensagem do chat?',
-                async () => {
-                    try {
-                        await apiFetch(`/chat/mensagens/${msg.id}`, { method: 'DELETE' });
-                        await this.carregarChat();
-                    } catch (e) {
-                        this.notificar(e.message, 'erro');
-                    }
+            this.mensagemApagandoId = this.mensagemApagandoId === msg.id ? null : msg.id;
+        },
+        cancelarApagarMensagem() {
+            this.mensagemApagandoId = null;
+        },
+        async confirmarApagarMensagem(msg) {
+            if (this.apagandoMensagem) return;
+            this.apagandoMensagem = true;
+            try {
+                await apiFetch(`/chat/mensagens/${msg.id}`, { method: 'DELETE' });
+                this.mensagemApagandoId = null;
+                await this.carregarChat();
+                await this.atualizarMarcadoresSync();
+            } catch (e) {
+                if (e.httpStatus === 404) {
+                    this.mensagemApagandoId = null;
+                    await this.carregarChat();
+                    this.notificar('Esta mensagem ja nao existe mais.', 'aviso');
+                    return;
                 }
-            );
+                this.notificar(e.message, 'erro');
+            } finally {
+                this.apagandoMensagem = false;
+            }
         },
 
         // -------------------- PERFIL RÁPIDO NO CHAT (clique no usuário) --------------------
@@ -1422,12 +1523,14 @@ function app() {
             this.chatConversaCom = usuario;
             this.perfilRapido = null;
             this.mensagemEditandoId = null;
+            this.mensagemApagandoId = null;
             await this.carregarChat();
         },
         async voltarParaChatGeral() {
             this.chatConversaCom = null;
             this.chatGrupoAtual = null;
             this.mensagemEditandoId = null;
+            this.mensagemApagandoId = null;
             await this.carregarChat();
         },
         async carregarUsuariosChat() {
@@ -1446,6 +1549,7 @@ function app() {
             this.chatConversaCom = null;
             this.chatGrupoAtual = grupo;
             this.mensagemEditandoId = null;
+            this.mensagemApagandoId = null;
             this.mostrarListaUsuariosChat = false;
             await this.carregarChat();
         },
@@ -1508,7 +1612,8 @@ function app() {
                     } catch (e) {
                         this.notificar(e.message, 'erro');
                     }
-                }
+                },
+                { textoConfirmar: 'Sair do Grupo', perigo: false }
             );
         },
         excluirGrupo(grupo) {
@@ -1526,7 +1631,8 @@ function app() {
                     } catch (e) {
                         this.notificar(e.message, 'erro');
                     }
-                }
+                },
+                { textoConfirmar: 'Excluir Grupo', perigo: true }
             );
         },
         async abrirGerenciarMembros(grupo) {
@@ -1732,7 +1838,8 @@ function app() {
                     } catch (e) {
                         this.notificar(e.message, 'erro');
                     }
-                }
+                },
+                { textoConfirmar: 'Encerrar Sessões', perigo: false }
             );
         },
 
@@ -1778,8 +1885,7 @@ function app() {
                     this.notificar('As cidades foram atualizadas.', 'aviso');
                 }
                 if (atual.chatUltimoId !== this.ultimaSync.chatUltimoId) {
-                    const vendoChatEmAba = this.page === 'public' && this.publicTab === 'chat';
-                    if (vendoChatEmAba || this.chatFlutuanteAberto) {
+                    if (this.chatFlutuanteAberto) {
                         await this.carregarChat(true);
                     } else {
                         this.chatNaoLidas += 1;
@@ -1864,7 +1970,8 @@ function app() {
                     } catch (e) {
                         this.notificar(e.message, 'erro');
                     }
-                }
+                },
+                { textoConfirmar: novaRole === 'admin' ? 'Promover a Admin' : 'Remover Privilégios', perigo: novaRole !== 'admin' }
             );
         },
 

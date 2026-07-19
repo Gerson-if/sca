@@ -42,6 +42,9 @@ def _cidade_from_payload(data: CidadeIn) -> dict:
 
 @api_bp.get("/cidades")
 @aprovado_required
+# Recarregada sempre que /api/sync detecta mudança nas cidades — limite
+# próprio pelo mesmo motivo de /api/sync e /api/avisos (ver app/api/sync.py).
+@limiter.limit("60 per minute")
 def listar_cidades():
     q = (request.args.get("q") or "").strip().lower()
     query = Cidade.query.order_by(Cidade.nome.asc())

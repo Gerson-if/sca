@@ -35,17 +35,35 @@
                                             <i class="fa-solid fa-right-from-bracket"></i>
                                         </button>
 
-                                        <div class="relative">
-                                            <button x-show="!chatGrupoAtual && !chatConversaCom" @click="carregarUsuariosChat(); carregarGrupos(); mostrarListaUsuariosChat = !mostrarListaUsuariosChat" class="p-2.5 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-xl transition-fast" title="Grupos e conversas privadas">
+                                        <div class="relative" @click.outside="mostrarListaUsuariosChat = false">
+                                            <button
+                                                x-show="!chatGrupoAtual && !chatConversaCom"
+                                                @click.stop="carregarUsuariosChat(); carregarGrupos(); mostrarListaUsuariosChat = !mostrarListaUsuariosChat"
+                                                class="pl-2.5 pr-3 py-2 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-xl transition-fast flex items-center gap-1.5"
+                                                :class="mostrarListaUsuariosChat ? 'bg-indigo-500/10 text-indigo-400' : ''"
+                                                title="Iniciar um grupo ou uma conversa privada"
+                                                aria-haspopup="true"
+                                                :aria-expanded="mostrarListaUsuariosChat"
+                                            >
                                                 <i class="fa-solid fa-circle-plus"></i>
+                                                <span class="hidden sm:inline text-xs font-semibold">Nova conversa</span>
+                                                <i class="fa-solid fa-chevron-down text-[9px] transition-transform" :class="mostrarListaUsuariosChat ? 'rotate-180' : ''"></i>
                                             </button>
-                                            <div x-show="mostrarListaUsuariosChat" @click.outside="mostrarListaUsuariosChat = false"
+                                            <div x-show="mostrarListaUsuariosChat"
                                                  x-transition class="absolute right-0 top-full mt-2 w-72 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-20 max-h-80 overflow-y-auto" style="display:none;">
 
-                                                <div class="flex items-center justify-between px-3 pt-3 pb-1">
+                                                <!-- Texto simples explicando o que este menu faz, para quem não é
+                                                     familiarizado com o sistema: clicar aqui NÃO envia nada — só
+                                                     abre um grupo existente, cria um novo, ou inicia uma conversa
+                                                     individual com outra pessoa. -->
+                                                <p class="text-[11px] text-slate-500 px-3 pt-3 pb-1 leading-snug">
+                                                    Escolha um grupo para entrar ou uma pessoa para conversar em particular.
+                                                </p>
+
+                                                <div class="flex items-center justify-between px-3 pt-2 pb-1">
                                                     <p class="text-[11px] font-bold uppercase tracking-wide text-slate-500">Grupos</p>
                                                     <button @click="abrirModalNovoGrupo(); mostrarListaUsuariosChat = false" class="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
-                                                        <i class="fa-solid fa-plus text-[9px]"></i> Criar
+                                                        <i class="fa-solid fa-plus text-[9px]"></i> Criar novo grupo
                                                     </button>
                                                 </div>
                                                 <template x-for="g in chatGrupos" :key="'grp-' + g.id">
@@ -60,7 +78,7 @@
                                                 <p x-show="chatGrupos.length === 0" class="text-xs text-slate-500 text-center py-3">Nenhum grupo ainda.</p>
 
                                                 <div class="border-t border-slate-700 mt-1"></div>
-                                                <p class="text-[11px] font-bold uppercase tracking-wide text-slate-500 px-3 pt-3 pb-1">Conversa Privada</p>
+                                                <p class="text-[11px] font-bold uppercase tracking-wide text-slate-500 px-3 pt-3 pb-1">Conversa privada (só você e a pessoa)</p>
                                                 <template x-for="u in chatUsuarios" :key="u.id">
                                                     <button @click="iniciarConversaPrivada(u); mostrarListaUsuariosChat = false" class="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-slate-700/60 transition-fast text-left">
                                                         <div class="w-7 h-7 rounded-lg overflow-hidden bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-300 shrink-0">
@@ -84,7 +102,7 @@
                                             :class="msg.autorId === usuarioAtual.id ? 'ml-auto flex-row-reverse' : ''"
                                         >
                                             <button
-                                                @click="abrirPerfilRapido(msg.autorId, msg.autor, msg.autorFotoUrl, msg.autorEhAdmin)"
+                                                @click.stop="abrirPerfilRapido(msg.autorId, msg.autor, msg.autorFotoUrl, msg.autorEhAdmin)"
                                                 class="w-8 h-8 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-400 shrink-0 mt-0.5 hover:ring-2 hover:ring-indigo-500 transition-fast"
                                                 title="Ver perfil"
                                             >
@@ -95,13 +113,13 @@
                                             <div class="flex flex-col gap-1 min-w-0" :class="msg.autorId === usuarioAtual.id ? 'items-end' : 'items-start'">
                                                 <div class="flex items-center gap-1.5 text-[11px] text-slate-500"
                                                      :class="msg.autorId === usuarioAtual.id ? 'flex-row-reverse' : ''">
-                                                    <button @click="abrirPerfilRapido(msg.autorId, msg.autor, msg.autorFotoUrl, msg.autorEhAdmin)" class="font-bold text-slate-400 hover:text-indigo-400 transition-fast" x-text="msg.autor"></button>
+                                                    <button @click.stop="abrirPerfilRapido(msg.autorId, msg.autor, msg.autorFotoUrl, msg.autorEhAdmin)" class="font-bold text-slate-400 hover:text-indigo-400 transition-fast" x-text="msg.autor"></button>
                                                     <span x-show="msg.autorEhAdmin" class="px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 text-[9px] font-bold uppercase">Admin</span>
                                                     <span x-text="new Date(msg.criadoEm).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})"></span>
                                                     <span x-show="msg.editado" class="italic">(editado)</span>
                                                 </div>
 
-                                                <template x-if="mensagemEditandoId !== msg.id">
+                                                <template x-if="mensagemEditandoId !== msg.id && mensagemApagandoId !== msg.id">
                                                     <div class="rounded-2xl px-4 py-2.5 text-sm break-words shadow-sm"
                                                          :class="msg.autorId === usuarioAtual.id ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-slate-800 text-slate-200 rounded-tl-sm'"
                                                          x-html="linkify(msg.conteudo)">
@@ -122,7 +140,37 @@
                                                     </div>
                                                 </template>
 
-                                                <div class="flex items-center gap-3 text-[11px]" x-show="mensagemEditandoId !== msg.id">
+                                                <!-- Confirmacao de exclusao: pequeno pop-up inline, dentro do
+                                                     proprio balao da mensagem (mesmo espirito do modo de edicao
+                                                     acima) - nunca um modal de tela cheia. Isso mantem o chat
+                                                     aberto e no contexto da conversa o tempo todo. -->
+                                                <template x-if="mensagemApagandoId === msg.id">
+                                                    <div class="w-full rounded-2xl px-4 py-3 text-sm bg-rose-950/40 border border-rose-500/30">
+                                                        <p class="text-rose-200 mb-2.5 flex items-center gap-2">
+                                                            <i class="fa-solid fa-triangle-exclamation text-rose-400"></i>
+                                                            Apagar esta mensagem?
+                                                        </p>
+                                                        <div class="flex items-center gap-2 justify-end">
+                                                            <button
+                                                                type="button"
+                                                                @click="cancelarApagarMensagem()"
+                                                                :disabled="apagandoMensagem"
+                                                                class="bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-300 font-semibold px-3 py-1.5 rounded-lg text-xs transition-fast"
+                                                            >Cancelar</button>
+                                                            <button
+                                                                type="button"
+                                                                @click="confirmarApagarMensagem(msg)"
+                                                                :disabled="apagandoMensagem"
+                                                                class="bg-rose-600 hover:bg-rose-500 disabled:opacity-60 text-white font-semibold px-3 py-1.5 rounded-lg text-xs transition-fast flex items-center gap-1.5"
+                                                            >
+                                                                <i x-show="apagandoMensagem" class="fa-solid fa-circle-notch fa-spin"></i>
+                                                                <span x-text="apagandoMensagem ? 'Apagando...' : 'Apagar'"></span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </template>
+
+                                                <div class="flex items-center gap-3 text-[11px]" x-show="mensagemEditandoId !== msg.id && mensagemApagandoId !== msg.id">
                                                     <button x-show="msg.podeEditar" @click="iniciarEdicaoMensagem(msg)" class="text-slate-500 hover:text-indigo-400 transition-fast">
                                                         <i class="fa-solid fa-pen"></i> Editar
                                                     </button>

@@ -118,27 +118,26 @@ def login():
     # autenticar, forçando o Flask-Session a emitir um identificador novo.
     session.clear()
 
-    # CORREÇÃO: aqui era o motivo real do "entro como admin em outro
-    # navegador/computador e já loga sozinho". Antes, TODO login chamava
-    # login_user(user, remember=True) + session.permanent = True incondicionalmente,
-    # o que faz o Flask-Login emitir:
-    #   1) um cookie de sessão com validade de 8h mesmo após fechar o navegador;
-    #   2) um cookie "remember_token" com validade de 7 dias, que sozinho já
-    #      é suficiente para o Flask-Login reautenticar automaticamente a
-    #      PRÓXIMA pessoa que abrir aquele mesmo navegador — sem digitar
-    #      usuário/senha nenhum.
-    # Em um computador/navegador compartilhado (uso comum desse tipo de
-    # sistema), isso fazia a "sessão" de quem logou por último "vazar" para
-    # a próxima pessoa, mesmo sem ela saber a senha.
+    # REMOVIDO o "manter conectado" (sessão persistente / remember_token).
+    # Esse recurso emitia um cookie "remember_token" com validade de dias,
+    # suficiente para o Flask-Login reautenticar sozinho a PRÓXIMA pessoa
+    # que abrisse aquele navegador — ou que recebesse o link do projeto já
+    # com aquele cookie no navegador — sem digitar usuário/senha nenhum.
+    # Era exatamente a causa do "compartilhei o link e a pessoa caiu na
+    # minha sessão". Agora TODO login usa `remember=False` e
+    # `session.permanent = False`, incondicionalmente: nenhum remember_token
+    # é emitido, e o cookie de sessão dura apenas enquanto o navegador
+    # continuar aberto. Fechou o navegador (ou usou outro navegador/
+    # dispositivo/link), a sessão anterior não existe mais e é obrigatório
+    # logar de novo com usuário e senha corretos.
     #
-    # Agora isso só acontece se a pessoa marcar explicitamente "manter
-    # conectado" no formulário. Por padrão, o cookie de sessão não tem
-    # validade própria (dura só enquanto o navegador ficar aberto) e
-    # nenhum remember_token é emitido — ou seja, fechou o navegador, a
-    # sessão acaba, e da próxima vez é obrigatório logar de novo com usuário
-    # e senha corretos.
-    login_user(user, remember=data.manterConectado)
-    session.permanent = data.manterConectado
+    # Quem quiser não digitar a senha de novo pode usar o recurso nativo do
+    # PRÓPRIO navegador para lembrar usuário/senha (por isso os campos do
+    # formulário de login têm autocomplete="username"/"current-password") —
+    # isso é responsabilidade do navegador, não do sistema, e não cria um
+    # cookie de sessão de longa duração que possa vazar por um link.
+    login_user(user, remember=False)
+    session.permanent = False
 
     # Rotaciona o identificador de sessão do lado do servidor (não só o
     # conteúdo, que já foi limpo acima com session.clear()). Sem isso, um

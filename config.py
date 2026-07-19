@@ -49,6 +49,13 @@ class Config:
     }
 
     # --- Flask-Login ---
+    # Estes valores só teriam efeito se algum login chamasse
+    # login_user(..., remember=True). Isso não acontece mais em nenhum lugar
+    # do código (ver app/auth/routes.py) — o recurso "manter conectado" foi
+    # removido por permitir que o cookie remember_token vazasse a sessão de
+    # quem logou por último para outro navegador/dispositivo/link
+    # compartilhado. Mantidos aqui apenas como valor seguro caso
+    # remember=True volte a ser usado no futuro.
     REMEMBER_COOKIE_DURATION = timedelta(days=7)
     REMEMBER_COOKIE_HTTPONLY = True
     REMEMBER_COOKIE_SAMESITE = "Lax"

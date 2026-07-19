@@ -73,6 +73,10 @@ def upload_imagem_aviso():
 
 @api_bp.get("/avisos")
 @aprovado_required
+# Consultada a cada 30s (polling) e sempre que /api/sync detecta mudança —
+# limite próprio para não cair no default_limits global de 200/hora (ver
+# app/api/sync.py para o contexto completo desse problema).
+@limiter.limit("60 per minute")
 def listar_avisos():
     avisos = Aviso.query.order_by(Aviso.inicio.desc()).all()
     return jsonify([a.to_dict() for a in avisos])

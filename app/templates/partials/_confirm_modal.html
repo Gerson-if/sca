@@ -9,7 +9,9 @@
                 class="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 w-full max-w-sm overflow-hidden relative z-10 p-6"
             >
                 <div class="flex items-center gap-3 mb-3">
-                    <span class="p-2.5 rounded-xl text-rose-400 bg-rose-500/10"><i class="fa-solid fa-triangle-exclamation animate-pulse"></i></span>
+                    <span class="p-2.5 rounded-xl" :class="confirmacao.perigo ? 'text-rose-400 bg-rose-500/10' : 'text-amber-400 bg-amber-500/10'">
+                        <i class="fa-solid fa-triangle-exclamation animate-pulse"></i>
+                    </span>
                     <h2 class="text-base font-bold text-slate-100" x-text="confirmacao.titulo"></h2>
                 </div>
                 <p class="text-sm text-slate-400 mb-6" x-text="confirmacao.mensagem"></p>
@@ -17,16 +19,20 @@
                     <button
                         type="button"
                         @click="cancelarConfirmacao"
-                        class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-5 py-2.5 rounded-xl transition-fast"
+                        :disabled="confirmandoAcao"
+                        class="bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 font-semibold px-5 py-2.5 rounded-xl transition-fast"
                     >
                         Cancelar
                     </button>
                     <button
                         type="button"
                         @click="confirmarAcao"
-                        class="bg-rose-600 hover:bg-rose-500 text-white font-semibold px-5 py-2.5 rounded-xl transition-fast"
+                        :disabled="confirmandoAcao"
+                        class="text-white font-semibold px-5 py-2.5 rounded-xl transition-fast disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+                        :class="confirmacao.perigo ? 'bg-rose-600 hover:bg-rose-500' : 'bg-indigo-600 hover:bg-indigo-500'"
                     >
-                        Confirmar Exclusão
+                        <i x-show="confirmandoAcao" class="fa-solid fa-circle-notch fa-spin"></i>
+                        <span x-text="confirmandoAcao ? 'Aguarde...' : confirmacao.textoConfirmar"></span>
                     </button>
                 </div>
             </div>

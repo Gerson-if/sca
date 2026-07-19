@@ -21,6 +21,7 @@ h1, h2, h3, h4 { letter-spacing: -0.015em; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #334155; border-radius: 8px; }
 ::-webkit-scrollbar-thumb:hover { background: #475569; }
+* { scrollbar-width: thin; scrollbar-color: #334155 transparent; }
 
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="datetime-local"]::-webkit-calendar-picker-indicator {

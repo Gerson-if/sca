@@ -130,12 +130,6 @@ class AvisoIn(BaseModel):
 class LoginIn(BaseModel):
     username: str
     password: str
-    # Opt-in explícito do usuário para manter a sessão viva entre fechamentos
-    # do navegador (cookie persistente por alguns dias). Por padrão é False:
-    # a sessão vale apenas enquanto o navegador estiver aberto, para que um
-    # computador/navegador compartilhado por várias pessoas nunca autologue
-    # a próxima pessoa como quem usou por último.
-    manterConectado: bool = False
 
     @field_validator("username", "password")
     @classmethod
