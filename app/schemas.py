@@ -289,6 +289,7 @@ class TemaIn(BaseModel):
 class ChatMensagemIn(BaseModel):
     conteudo: str
     destinatarioId: Optional[int] = None
+    grupoId: Optional[int] = None
 
     @field_validator("conteudo")
     @classmethod
@@ -299,6 +300,61 @@ class ChatMensagemIn(BaseModel):
         if len(v) > 2000:
             raise ValueError("Mensagem muito longa (máx. 2000 caracteres).")
         return v
+
+
+class GrupoChatIn(BaseModel):
+    nome: str
+    descricao: Optional[str] = ""
+    icone: str = "fa-users"
+    cor: str = "indigo"
+    membrosIds: list[int] = []
+
+    @field_validator("nome")
+    @classmethod
+    def nome_valido(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("Informe o nome do grupo.")
+        if len(v) > 80:
+            raise ValueError("Nome muito longo (máx. 80 caracteres).")
+        return v
+
+    @field_validator("descricao")
+    @classmethod
+    def descricao_valida(cls, v):
+        v = (v or "").strip()
+        if len(v) > 255:
+            raise ValueError("Descrição muito longa (máx. 255 caracteres).")
+        return v
+
+    @field_validator("icone")
+    @classmethod
+    def icone_valido(cls, v: str) -> str:
+        permitidos = {
+            "fa-users", "fa-hashtag", "fa-comments", "fa-bullhorn", "fa-briefcase",
+            "fa-wrench", "fa-truck-medical", "fa-city", "fa-star", "fa-fire",
+            "fa-shield-halved", "fa-code", "fa-chart-line", "fa-headset", "fa-map-location-dot",
+        }
+        if v not in permitidos:
+            raise ValueError("Ícone inválido.")
+        return v
+
+    @field_validator("cor")
+    @classmethod
+    def cor_valida(cls, v: str) -> str:
+        permitidas = {"indigo", "blue", "emerald", "amber", "rose", "violet", "cyan", "slate"}
+        if v not in permitidas:
+            raise ValueError("Cor inválida.")
+        return v
+
+    @field_validator("membrosIds")
+    @classmethod
+    def membros_validos(cls, v):
+        if not isinstance(v, list):
+            raise ValueError("Lista de membros inválida.")
+        if len(v) > 200:
+            raise ValueError("Grupo com muitos membros de uma vez (máx. 200).")
+        return list({int(i) for i in v})
 
 
 class ConfiguracaoSiteIn(BaseModel):

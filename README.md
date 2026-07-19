@@ -154,10 +154,18 @@ GET    /api/avisos/estatisticas     (admin)
 
 POST   /api/uploads/imagem          (admin — Pillow redimensiona/otimiza)
 
-GET    /api/chat/mensagens          (usuário aprovado ou admin)
-POST   /api/chat/mensagens          (usuário aprovado ou admin)
+GET    /api/chat/mensagens          (usuário aprovado ou admin; ?com=<id> = DM, ?grupo=<id> = grupo)
+POST   /api/chat/mensagens          (usuário aprovado ou admin; body aceita destinatarioId OU grupoId)
 PUT    /api/chat/mensagens/<id>      (autor da mensagem)
-DELETE /api/chat/mensagens/<id>      (autor da mensagem ou admin)
+DELETE /api/chat/mensagens/<id>      (autor da mensagem; admin só no chat geral)
+GET    /api/chat/usuarios            (diretório leve p/ iniciar conversa privada)
+GET    /api/chat/grupos              (grupos dos quais participo; admin vê todos)
+POST   /api/chat/grupos              (cria um grupo — vira admin dele automaticamente)
+PUT    /api/chat/grupos/<id>          (admin do grupo ou do sistema)
+DELETE /api/chat/grupos/<id>          (admin do grupo ou do sistema)
+GET    /api/chat/grupos/<id>/membros
+POST   /api/chat/grupos/<id>/membros           (admin do grupo — body: {membrosIds: [...]})
+DELETE /api/chat/grupos/<id>/membros/<user_id>  (sair = próprio ID; remover outro = admin do grupo)
 
 GET    /api/admin/usuarios                    (admin — lista/filtra por status)
 POST   /api/admin/usuarios/<id>/aprovar        (admin)
@@ -317,6 +325,29 @@ WantedBy=multi-user.target
 > compartilhar sessão/cache/rate-limit entre os processos.
 
 ## Concorrência e robustez sob múltiplos usuários simultâneos
+
+- **XSS armazenado corrigido no chat** (`linkify()` em app.js): mensagens
+  eram escapadas contra `<`/`>`/`&`, mas não contra aspas. Uma mensagem
+  como `https://x.com" onmouseover="alert(1)` escapava do atributo
+  `href` do link gerado e injetava um atributo/evento arbitrário no HTML
+  — um XSS de verdade, disparado só de alguém ler o chat. Corrigido
+  escapando aspas simples e duplas antes de detectar links.
+- **Gráficos do painel administrativo** (`renderizarOuAtualizarGraficos`):
+  corrigido o erro `Cannot set properties of undefined (setting
+  'fullSize')` — o Chart.js corrompe o estado interno de um gráfico
+  quando `.update()` é chamado num canvas invisível/com tamanho zero, ou
+  quando duas atualizações se sobrepõem no tempo (ex.: excluir um aviso
+  dispara isso quase ao mesmo tempo que a sincronização automática). Agora
+  a função sempre destrói e recria o gráfico do zero (em vez de reusar
+  uma instância que pode estar presa a um canvas antigo), ignora canvases
+  que não estão de fato visíveis, tem uma trava contra chamadas
+  sobrepostas, e nunca deixa uma falha de gráfico interromper a ação que
+  a disparou.
+- **Carrossel de avisos**: os slides não eram posicionados com
+  `absolute`, então durante a transição (que sobrepõe a saída de um slide
+  com a entrada do próximo) os dois ficavam empilhados no fluxo normal do
+  documento — daí o "aparece embaixo e buga". Corrigido posicionando cada
+  slide de forma absoluta dentro de um contêiner com altura mínima fixa.
 
 Testado com carga concorrente real (não só lida no código) usando um
 worker pool de 15 threads disparando requisições ao mesmo tempo contra um

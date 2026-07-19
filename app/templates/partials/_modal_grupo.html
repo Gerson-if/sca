@@ -1,0 +1,99 @@
+                <div x-show="modalNovoGrupoAberto" class="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" style="display: none;">
+                    <div @click="fecharModalNovoGrupo" class="fixed inset-0 bg-slate-950/80"></div>
+
+                    <div class="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 w-full max-w-lg overflow-hidden relative z-10">
+                        <div class="bg-slate-900 px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="p-2 rounded-lg text-indigo-400 bg-indigo-500/10"><i class="fa-solid fa-hashtag"></i></span>
+                                <h2 class="text-lg font-bold text-slate-100" x-text="editandoGrupoId ? 'Editar Grupo' : 'Criar Novo Grupo'"></h2>
+                            </div>
+                            <button @click="fecharModalNovoGrupo" class="text-slate-500 hover:text-slate-300 transition-fast"><i class="fa-solid fa-xmark text-lg"></i></button>
+                        </div>
+
+                        <form @submit.prevent="salvarGrupo" class="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+                            <!-- PRÉVIA DO BADGE -->
+                            <div class="flex items-center gap-3 bg-slate-950 border border-slate-800 rounded-xl p-3">
+                                <span class="w-11 h-11 rounded-xl flex items-center justify-center text-lg shrink-0" :class="corBadgeGrupo(novoGrupoForm.cor)">
+                                    <i class="fa-solid" :class="novoGrupoForm.icone"></i>
+                                </span>
+                                <div class="min-w-0">
+                                    <p class="font-bold text-slate-100 truncate" x-text="novoGrupoForm.nome || 'Nome do grupo'"></p>
+                                    <p class="text-xs text-slate-500 truncate" x-text="novoGrupoForm.descricao || 'Descrição do grupo (opcional)'"></p>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-300 mb-1.5">Nome do grupo</label>
+                                <input type="text" x-model="novoGrupoForm.nome" maxlength="80" placeholder="Ex: Equipe Norte, Manutenção, Plantão..."
+                                    class="w-full border border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-800/60 text-slate-100 placeholder-slate-500 transition-fast" required />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-300 mb-1.5">Descrição (opcional)</label>
+                                <input type="text" x-model="novoGrupoForm.descricao" maxlength="255" placeholder="Pra que serve esse grupo?"
+                                    class="w-full border border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-800/60 text-slate-100 placeholder-slate-500 transition-fast" />
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-300 mb-2">Cor</label>
+                                <div class="flex flex-wrap gap-2">
+                                    <template x-for="cor in coresGrupoDisponiveis" :key="cor">
+                                        <button type="button" @click="novoGrupoForm.cor = cor"
+                                            class="w-8 h-8 rounded-full flex items-center justify-center transition-fast ring-offset-2 ring-offset-slate-900"
+                                            :class="[corBadgeGrupo(cor), novoGrupoForm.cor === cor ? 'ring-2 ring-white/70' : '']">
+                                            <i class="fa-solid fa-check text-xs" x-show="novoGrupoForm.cor === cor"></i>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-300 mb-2">Ícone</label>
+                                <div class="flex flex-wrap gap-2">
+                                    <template x-for="icone in iconesGrupoDisponiveis" :key="icone">
+                                        <button type="button" @click="novoGrupoForm.icone = icone"
+                                            class="w-9 h-9 rounded-xl flex items-center justify-center transition-fast border"
+                                            :class="novoGrupoForm.icone === icone ? corBadgeGrupo(novoGrupoForm.cor) + ' border-transparent' : 'bg-slate-800/60 border-slate-700 text-slate-500 hover:text-slate-300'">
+                                            <i class="fa-solid" :class="icone"></i>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <template x-if="!editandoGrupoId">
+                                <div>
+                                    <label class="block text-sm font-semibold text-slate-300 mb-2">Adicionar membros (opcional)</label>
+                                    <div class="max-h-40 overflow-y-auto space-y-1.5 bg-slate-950 border border-slate-800 rounded-xl p-2">
+                                        <template x-for="u in chatUsuarios" :key="'sel-' + u.id">
+                                            <label class="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-slate-800/60 cursor-pointer transition-fast">
+                                                <input type="checkbox" :value="u.id"
+                                                    :checked="novoGrupoForm.membrosIds.includes(u.id)"
+                                                    @change="novoGrupoForm.membrosIds.includes(u.id) ? novoGrupoForm.membrosIds = novoGrupoForm.membrosIds.filter(i => i !== u.id) : novoGrupoForm.membrosIds.push(u.id)"
+                                                    class="rounded border-slate-600 text-indigo-500 focus:ring-indigo-500 bg-slate-800" />
+                                                <div class="w-6 h-6 rounded-lg overflow-hidden bg-slate-700 flex items-center justify-center text-[9px] font-bold text-slate-300 shrink-0">
+                                                    <img x-show="u.fotoUrl" :src="u.fotoUrl" class="w-full h-full object-cover" />
+                                                    <span x-show="!u.fotoUrl" x-text="iniciaisUsuario(u)"></span>
+                                                </div>
+                                                <span class="text-sm text-slate-300 truncate" x-text="u.nome"></span>
+                                            </label>
+                                        </template>
+                                        <p x-show="chatUsuarios.length === 0" class="text-xs text-slate-500 text-center py-3">Nenhum outro usuário aprovado ainda.</p>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template x-if="formErrorNovoGrupo">
+                                <div class="flex items-center gap-2 text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl px-3.5 py-2.5 text-sm">
+                                    <i class="fa-solid fa-circle-exclamation"></i>
+                                    <span x-text="formErrorNovoGrupo"></span>
+                                </div>
+                            </template>
+
+                            <div class="pt-2 border-t border-slate-800 flex gap-3 justify-end">
+                                <button type="button" @click="fecharModalNovoGrupo" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-6 py-2.5 rounded-xl transition-fast">Cancelar</button>
+                                <button type="submit" :disabled="enviandoNovoGrupo" class="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-bold px-6 py-2.5 rounded-xl transition-fast">
+                                    <span x-text="editandoGrupoId ? 'Salvar Alterações' : 'Criar Grupo'"></span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>

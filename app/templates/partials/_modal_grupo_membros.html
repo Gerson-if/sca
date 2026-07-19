@@ -1,0 +1,65 @@
+                <div x-show="modalMembrosGrupoAberto" class="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" style="display: none;">
+                    <div @click="fecharGerenciarMembros" class="fixed inset-0 bg-slate-950/80"></div>
+
+                    <div class="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 w-full max-w-md overflow-hidden relative z-10">
+                        <template x-if="grupoParaGerenciar">
+                            <div>
+                                <div class="bg-slate-900 px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+                                    <div class="flex items-center gap-2.5 min-w-0">
+                                        <span class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" :class="corBadgeGrupo(grupoParaGerenciar.cor)">
+                                            <i class="fa-solid" :class="grupoParaGerenciar.icone"></i>
+                                        </span>
+                                        <div class="min-w-0">
+                                            <h2 class="text-base font-bold text-slate-100 truncate" x-text="grupoParaGerenciar.nome"></h2>
+                                            <p class="text-[11px] text-slate-500">Gerenciar membros</p>
+                                        </div>
+                                    </div>
+                                    <button @click="fecharGerenciarMembros" class="text-slate-500 hover:text-slate-300 transition-fast shrink-0"><i class="fa-solid fa-xmark text-lg"></i></button>
+                                </div>
+
+                                <div class="p-5 flex gap-2">
+                                    <button @click="abrirModalEditarGrupo(grupoParaGerenciar); fecharGerenciarMembros()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-4 py-2 rounded-xl transition-fast text-sm flex items-center justify-center gap-2">
+                                        <i class="fa-solid fa-pen text-xs"></i> Editar Grupo
+                                    </button>
+                                    <button @click="excluirGrupo(grupoParaGerenciar); fecharGerenciarMembros()" class="flex-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-semibold px-4 py-2 rounded-xl transition-fast text-sm flex items-center justify-center gap-2">
+                                        <i class="fa-solid fa-trash text-xs"></i> Excluir Grupo
+                                    </button>
+                                </div>
+
+                                <div class="px-5 pb-5">
+                                    <p class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-2">Membros do grupo (<span x-text="grupoMembrosAtual.length"></span>)</p>
+                                    <div class="max-h-56 overflow-y-auto space-y-1.5 mb-4">
+                                        <template x-for="m in grupoMembrosAtual" :key="'membro-' + m.id">
+                                            <div class="flex items-center gap-2.5 bg-slate-800/60 border border-slate-700 rounded-xl px-3 py-2">
+                                                <div class="w-7 h-7 rounded-lg overflow-hidden bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-300 shrink-0">
+                                                    <img x-show="m.fotoUrl" :src="m.fotoUrl" class="w-full h-full object-cover" />
+                                                    <span x-show="!m.fotoUrl" x-text="iniciaisUsuario(m)"></span>
+                                                </div>
+                                                <span class="text-sm text-slate-200 truncate flex-1" x-text="m.nome"></span>
+                                                <span x-show="m.papel === 'admin'" class="text-[9px] font-bold uppercase text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded-full shrink-0">Admin do grupo</span>
+                                                <button x-show="m.id !== usuarioAtual.id" @click="alternarMembroGrupo(m)" class="p-1.5 text-slate-500 hover:text-rose-400 transition-fast shrink-0" title="Remover do grupo">
+                                                    <i class="fa-solid fa-user-minus text-xs"></i>
+                                                </button>
+                                            </div>
+                                        </template>
+                                    </div>
+
+                                    <p class="text-[11px] font-bold uppercase tracking-wide text-slate-500 mb-2">Adicionar ao grupo</p>
+                                    <div class="max-h-40 overflow-y-auto space-y-1.5">
+                                        <template x-for="u in chatUsuarios.filter(u => !ehMembroDoGrupo(u.id))" :key="'add-' + u.id">
+                                            <button @click="alternarMembroGrupo(u)" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl hover:bg-slate-800/60 transition-fast text-left">
+                                                <div class="w-7 h-7 rounded-lg overflow-hidden bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-300 shrink-0">
+                                                    <img x-show="u.fotoUrl" :src="u.fotoUrl" class="w-full h-full object-cover" />
+                                                    <span x-show="!u.fotoUrl" x-text="iniciaisUsuario(u)"></span>
+                                                </div>
+                                                <span class="text-sm text-slate-300 truncate flex-1" x-text="u.nome"></span>
+                                                <i class="fa-solid fa-user-plus text-emerald-400 text-xs shrink-0"></i>
+                                            </button>
+                                        </template>
+                                        <p x-show="chatUsuarios.filter(u => !ehMembroDoGrupo(u.id)).length === 0" class="text-xs text-slate-500 text-center py-3">Todo mundo já está no grupo.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>

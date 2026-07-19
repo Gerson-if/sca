@@ -229,6 +229,26 @@ function app() {
         chatUsuarios: [],
         mostrarListaUsuariosChat: false,
         enviandoMensagemChat: false,
+        chatFlutuanteAberto: false,
+        chatNaoLidas: 0,
+
+        // -------------------- GRUPOS DE CHAT (canais) --------------------
+        chatGrupos: [],
+        chatGrupoAtual: null,
+        modalNovoGrupoAberto: false,
+        novoGrupoForm: { nome: '', descricao: '', icone: 'fa-users', cor: 'indigo', membrosIds: [] },
+        formErrorNovoGrupo: '',
+        enviandoNovoGrupo: false,
+        editandoGrupoId: null, // se preenchido, o modal "novo grupo" vira "editar grupo"
+        modalMembrosGrupoAberto: false,
+        grupoMembrosAtual: [],
+        grupoParaGerenciar: null,
+        iconesGrupoDisponiveis: [
+            'fa-users', 'fa-hashtag', 'fa-comments', 'fa-bullhorn', 'fa-briefcase',
+            'fa-wrench', 'fa-truck-medical', 'fa-city', 'fa-star', 'fa-fire',
+            'fa-shield-halved', 'fa-code', 'fa-chart-line', 'fa-headset', 'fa-map-location-dot',
+        ],
+        coresGrupoDisponiveis: ['indigo', 'blue', 'emerald', 'amber', 'rose', 'violet', 'cyan', 'slate'],
         perfilRapido: null, // usuário sendo mostrado no popover de perfil rápido do chat
 
         dataHora: '',
@@ -260,7 +280,8 @@ function app() {
 
             // Chat: consulta a cada 4s quando a aba de chat está visível.
             this.chatTimer = setInterval(() => {
-                if (this.podeVerAreaPublica() && this.page === 'public' && this.publicTab === 'chat') {
+                const vendoChatEmAba = this.page === 'public' && this.publicTab === 'chat';
+                if (this.podeVerAreaPublica() && (vendoChatEmAba || this.chatFlutuanteAberto)) {
                     this.carregarChat(true);
                 }
             }, 4000);
@@ -878,24 +899,49 @@ function app() {
         // -------------------- GRÁFICOS (CHART.JS) --------------------
         renderizarOuAtualizarGraficos() {
             if (!this.loggedIn || this.page !== 'admin') return;
+            // Trava simples contra chamadas sobrepostas: se duas ações (ex.:
+            // excluir um aviso + a sincronização automática) disparassem
+            // isso quase ao mesmo tempo, uma segunda chamada de
+            // chart.update() no meio da animação da primeira é o que
+            // corrompe o estado interno do Chart.js e gera o erro
+            // "Cannot set properties of undefined (setting 'fullSize')".
+            if (this._atualizandoGraficos) return;
+            this._atualizandoGraficos = true;
 
-            const matrizes = this.cidades.filter(c => c.perfil === 'matriz').length;
-            const filiais = this.cidades.filter(c => c.perfil === 'filial').length;
+            try {
+                const matrizes = this.cidades.filter(c => c.perfil === 'matriz').length;
+                const filiais = this.cidades.filter(c => c.perfil === 'filial').length;
 
-            const ativos = this.avisos.filter(a => a.status === 'Ativo').length;
-            const aguardando = this.avisos.filter(a => a.status === 'Aguardando').length;
-            const expirados = this.avisos.filter(a => a.status === 'Expirado').length;
+                const ativos = this.avisos.filter(a => a.status === 'Ativo').length;
+                const aguardando = this.avisos.filter(a => a.status === 'Aguardando').length;
+                const expirados = this.avisos.filter(a => a.status === 'Expirado').length;
 
-            const fontColor = '#94a3b8';
-            Chart.defaults.color = fontColor;
-            Chart.defaults.font.family = "'Inter', sans-serif";
+                const fontColor = '#94a3b8';
+                Chart.defaults.color = fontColor;
+                Chart.defaults.font.family = "'Inter', sans-serif";
 
-            const ctxCidades = document.getElementById('chartCidades');
-            if (ctxCidades) {
-                if (this.chartCidadesInst) {
-                    this.chartCidadesInst.data.datasets[0].data = [matrizes, filiais];
-                    this.chartCidadesInst.update();
-                } else {
+                // Se o canvas não estiver de fato visível/renderizado
+                // (offsetParent null = display:none em algum ancestral, ou
+                // o elemento foi trocado por outro depois de um x-if),
+                // qualquer tentativa de desenhar deixa o Chart.js com
+                // dimensões zero — origem clássica desse erro. Melhor
+                // pular silenciosamente; a próxima chamada (ao voltar pra
+                // essa tela) redesenha normalmente.
+                const visivel = (el) => !!el && el.offsetParent !== null;
+
+                const ctxCidades = document.getElementById('chartCidades');
+                if (visivel(ctxCidades)) {
+                    // Sempre destrói e recria em vez de reaproveitar a
+                    // instância antiga com .update(): se o canvas foi
+                    // substituído no DOM (Alpine recria o bloco inteiro do
+                    // admin ao trocar de página) a instância antiga ainda
+                    // aponta pro canvas MORTO, e atualizar isso é
+                    // exatamente o que gera o erro relatado. Recriar do
+                    // zero elimina essa classe inteira de bug.
+                    if (this.chartCidadesInst) {
+                        try { this.chartCidadesInst.destroy(); } catch (e) { /* instância já inválida, ignora */ }
+                        this.chartCidadesInst = null;
+                    }
                     this.chartCidadesInst = new Chart(ctxCidades, {
                         type: 'bar',
                         data: {
@@ -913,6 +959,7 @@ function app() {
                             indexAxis: 'y',
                             responsive: true,
                             maintainAspectRatio: false,
+                            animation: { duration: 300 },
                             plugins: { legend: { display: false } },
                             scales: {
                                 x: { grid: { color: '#1e293b' }, ticks: { precision: 0, color: fontColor } },
@@ -921,14 +968,13 @@ function app() {
                         }
                     });
                 }
-            }
 
-            const ctxAvisos = document.getElementById('chartAvisos');
-            if (ctxAvisos) {
-                if (this.chartAvisosInst) {
-                    this.chartAvisosInst.data.datasets[0].data = [ativos, aguardando, expirados];
-                    this.chartAvisosInst.update();
-                } else {
+                const ctxAvisos = document.getElementById('chartAvisos');
+                if (visivel(ctxAvisos)) {
+                    if (this.chartAvisosInst) {
+                        try { this.chartAvisosInst.destroy(); } catch (e) { /* instância já inválida, ignora */ }
+                        this.chartAvisosInst = null;
+                    }
                     this.chartAvisosInst = new Chart(ctxAvisos, {
                         type: 'doughnut',
                         data: {
@@ -943,6 +989,7 @@ function app() {
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
+                            animation: { duration: 300 },
                             plugins: {
                                 legend: {
                                     position: 'right',
@@ -953,6 +1000,12 @@ function app() {
                         }
                     });
                 }
+            } catch (e) {
+                // Um gráfico é um "nice to have" — nunca deve derrubar a
+                // ação que o disparou (ex.: excluir um aviso). Só loga.
+                console.error('Falha ao desenhar gráficos:', e);
+            } finally {
+                this._atualizandoGraficos = false;
             }
         },
 
@@ -1259,10 +1312,18 @@ function app() {
 
         // -------------------- CHAT INTERNO --------------------
         linkify(texto) {
+            // Escapa TUDO que poderia fechar uma tag/atributo HTML antes de
+            // procurar por URLs — nessa ordem, importa escapar aspas
+            // também: sem isso, uma mensagem como
+            // `https://x.com" onmouseover="alert(1)` faria o "onmouseover"
+            // vazar como um atributo de verdade na tag <a> gerada abaixo
+            // (um XSS armazenado de verdade, não hipotético).
             const escapado = texto
                 .replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;');
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
             return escapado.replace(/(https?:\/\/[^\s<]+)/g, (url) => {
                 return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="underline hover:opacity-80 break-all">${url}</a>`;
             });
@@ -1270,7 +1331,9 @@ function app() {
 
         async carregarChat(silencioso = false) {
             try {
-                const query = this.chatConversaCom ? `?com=${this.chatConversaCom.id}` : '';
+                let query = '';
+                if (this.chatGrupoAtual) query = `?grupo=${this.chatGrupoAtual.id}`;
+                else if (this.chatConversaCom) query = `?com=${this.chatConversaCom.id}`;
                 this.chatMensagens = await apiFetch(`/chat/mensagens${query}`);
                 this.$nextTick(() => {
                     if (this.$refs.chatScroll) {
@@ -1289,7 +1352,11 @@ function app() {
             try {
                 await apiFetch('/chat/mensagens', {
                     method: 'POST',
-                    body: JSON.stringify({ conteudo, destinatarioId: this.chatConversaCom ? this.chatConversaCom.id : null }),
+                    body: JSON.stringify({
+                        conteudo,
+                        destinatarioId: this.chatGrupoAtual ? null : (this.chatConversaCom ? this.chatConversaCom.id : null),
+                        grupoId: this.chatGrupoAtual ? this.chatGrupoAtual.id : null,
+                    }),
                 });
                 this.novaMensagemChat = '';
                 await this.carregarChat();
@@ -1359,6 +1426,7 @@ function app() {
         },
         async voltarParaChatGeral() {
             this.chatConversaCom = null;
+            this.chatGrupoAtual = null;
             this.mensagemEditandoId = null;
             await this.carregarChat();
         },
@@ -1366,6 +1434,152 @@ function app() {
             try {
                 this.chatUsuarios = await apiFetch('/chat/usuarios');
             } catch (e) { /* lista de conversas privadas fica vazia silenciosamente */ }
+        },
+
+        // -------------------- GRUPOS DE CHAT (canais) --------------------
+        async carregarGrupos() {
+            try {
+                this.chatGrupos = await apiFetch('/chat/grupos');
+            } catch (e) { /* lista de grupos fica vazia silenciosamente */ }
+        },
+        async entrarNoGrupo(grupo) {
+            this.chatConversaCom = null;
+            this.chatGrupoAtual = grupo;
+            this.mensagemEditandoId = null;
+            this.mostrarListaUsuariosChat = false;
+            await this.carregarChat();
+        },
+        abrirModalNovoGrupo() {
+            this.editandoGrupoId = null;
+            this.novoGrupoForm = { nome: '', descricao: '', icone: 'fa-users', cor: 'indigo', membrosIds: [] };
+            this.formErrorNovoGrupo = '';
+            this.mostrarListaUsuariosChat = false;
+            this.carregarUsuariosChat();
+            this.modalNovoGrupoAberto = true;
+        },
+        abrirModalEditarGrupo(grupo) {
+            this.editandoGrupoId = grupo.id;
+            this.novoGrupoForm = { nome: grupo.nome, descricao: grupo.descricao, icone: grupo.icone, cor: grupo.cor, membrosIds: [] };
+            this.formErrorNovoGrupo = '';
+            this.modalNovoGrupoAberto = true;
+        },
+        fecharModalNovoGrupo() {
+            this.modalNovoGrupoAberto = false;
+        },
+        async salvarGrupo() {
+            if (this.enviandoNovoGrupo) return;
+            this.formErrorNovoGrupo = '';
+            this.enviandoNovoGrupo = true;
+            try {
+                if (this.editandoGrupoId) {
+                    await apiFetch(`/chat/grupos/${this.editandoGrupoId}`, {
+                        method: 'PUT',
+                        body: JSON.stringify(this.novoGrupoForm),
+                    });
+                    this.notificar('Grupo atualizado.', 'sucesso');
+                } else {
+                    const grupo = await apiFetch('/chat/grupos', {
+                        method: 'POST',
+                        body: JSON.stringify(this.novoGrupoForm),
+                    });
+                    this.notificar(`Grupo "${grupo.nome}" criado.`, 'sucesso');
+                    await this.entrarNoGrupo(grupo);
+                }
+                this.fecharModalNovoGrupo();
+                await this.carregarGrupos();
+            } catch (e) {
+                this.formErrorNovoGrupo = e.message;
+            } finally {
+                this.enviandoNovoGrupo = false;
+            }
+        },
+        sairDoGrupo(grupo) {
+            this.pedirConfirmacao(
+                'Sair do grupo',
+                `Tem certeza que deseja sair do grupo "${grupo.nome}"? Você pode ser adicionado de volta por quem administra o grupo.`,
+                async () => {
+                    try {
+                        await apiFetch(`/chat/grupos/${grupo.id}/membros/${this.usuarioAtual.id}`, { method: 'DELETE' });
+                        if (this.chatGrupoAtual && this.chatGrupoAtual.id === grupo.id) {
+                            await this.voltarParaChatGeral();
+                        }
+                        await this.carregarGrupos();
+                        this.notificar(`Você saiu do grupo "${grupo.nome}".`, 'aviso');
+                    } catch (e) {
+                        this.notificar(e.message, 'erro');
+                    }
+                }
+            );
+        },
+        excluirGrupo(grupo) {
+            this.pedirConfirmacao(
+                'Excluir grupo',
+                `Isso apaga o grupo "${grupo.nome}" e todo o histórico de mensagens dele, para todos os membros. Esta ação não pode ser desfeita.`,
+                async () => {
+                    try {
+                        await apiFetch(`/chat/grupos/${grupo.id}`, { method: 'DELETE' });
+                        if (this.chatGrupoAtual && this.chatGrupoAtual.id === grupo.id) {
+                            await this.voltarParaChatGeral();
+                        }
+                        await this.carregarGrupos();
+                        this.notificar(`Grupo "${grupo.nome}" excluído.`, 'aviso');
+                    } catch (e) {
+                        this.notificar(e.message, 'erro');
+                    }
+                }
+            );
+        },
+        async abrirGerenciarMembros(grupo) {
+            this.grupoParaGerenciar = grupo;
+            this.modalMembrosGrupoAberto = true;
+            await this.carregarUsuariosChat();
+            try {
+                this.grupoMembrosAtual = await apiFetch(`/chat/grupos/${grupo.id}/membros`);
+            } catch (e) {
+                this.notificar(e.message, 'erro');
+            }
+        },
+        fecharGerenciarMembros() {
+            this.modalMembrosGrupoAberto = false;
+            this.grupoParaGerenciar = null;
+        },
+        ehMembroDoGrupo(userId) {
+            return this.grupoMembrosAtual.some(m => m.id === userId);
+        },
+        async alternarMembroGrupo(usuario) {
+            try {
+                if (this.ehMembroDoGrupo(usuario.id)) {
+                    await apiFetch(`/chat/grupos/${this.grupoParaGerenciar.id}/membros/${usuario.id}`, { method: 'DELETE' });
+                } else {
+                    await apiFetch(`/chat/grupos/${this.grupoParaGerenciar.id}/membros`, {
+                        method: 'POST',
+                        body: JSON.stringify({ membrosIds: [usuario.id] }),
+                    });
+                }
+                this.grupoMembrosAtual = await apiFetch(`/chat/grupos/${this.grupoParaGerenciar.id}/membros`);
+                await this.carregarGrupos();
+            } catch (e) {
+                this.notificar(e.message, 'erro');
+            }
+        },
+        corBadgeGrupo(cor) {
+            const mapa = {
+                indigo: 'bg-indigo-500/15 text-indigo-400', blue: 'bg-blue-500/15 text-blue-400',
+                emerald: 'bg-emerald-500/15 text-emerald-400', amber: 'bg-amber-500/15 text-amber-400',
+                rose: 'bg-rose-500/15 text-rose-400', violet: 'bg-violet-500/15 text-violet-400',
+                cyan: 'bg-cyan-500/15 text-cyan-400', slate: 'bg-slate-500/15 text-slate-400',
+            };
+            return mapa[cor] || mapa.indigo;
+        },
+
+        // -------------------- BOTÃO FLUTUANTE DE CHAT --------------------
+        async alternarChatFlutuante() {
+            this.chatFlutuanteAberto = !this.chatFlutuanteAberto;
+            if (this.chatFlutuanteAberto) {
+                this.chatNaoLidas = 0;
+                await this.carregarGrupos();
+                await this.carregarChat();
+            }
         },
 
         atualizarDataHora() {
@@ -1564,9 +1778,11 @@ function app() {
                     this.notificar('As cidades foram atualizadas.', 'aviso');
                 }
                 if (atual.chatUltimoId !== this.ultimaSync.chatUltimoId) {
-                    if (this.page === 'public' && this.publicTab === 'chat') {
+                    const vendoChatEmAba = this.page === 'public' && this.publicTab === 'chat';
+                    if (vendoChatEmAba || this.chatFlutuanteAberto) {
                         await this.carregarChat(true);
                     } else {
+                        this.chatNaoLidas += 1;
                         this.notificar('Nova mensagem no chat interno.', 'aviso');
                         this.notificarNavegador('Nova mensagem no chat', 'Há uma nova mensagem no chat interno.');
                     }

@@ -314,6 +314,65 @@ class Aviso(db.Model):
 
 
 # ------------------------------------------------------------------
+# GRUPOS DE CHAT (canais/salas temáticas — organizam a conversa em vez de
+# jogar tudo num único chat geral)
+# ------------------------------------------------------------------
+class GrupoChat(db.Model):
+    __tablename__ = "grupos_chat"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(80), nullable=False)
+    descricao = db.Column(db.String(255), nullable=True)
+    icone = db.Column(db.String(40), nullable=False, default="fa-users")
+    cor = db.Column(db.String(20), nullable=False, default="indigo")
+
+    criado_por_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+
+    criador = db.relationship("User", foreign_keys=[criado_por_id])
+    membros = db.relationship(
+        "GrupoChatMembro", back_populates="grupo", cascade="all, delete-orphan"
+    )
+
+    def to_dict(self, current_user_id=None):
+        membros_atuais = list(self.membros)
+        sou_membro = any(m.user_id == current_user_id for m in membros_atuais)
+        sou_admin_grupo = any(
+            m.user_id == current_user_id and m.papel == "admin" for m in membros_atuais
+        )
+        return {
+            "id": self.id,
+            "nome": self.nome,
+            "descricao": self.descricao or "",
+            "icone": self.icone,
+            "cor": self.cor,
+            "criadoPorId": self.criado_por_id,
+            "criadoPorNome": (self.criador.nome or self.criador.username) if self.criador else None,
+            "totalMembros": len(membros_atuais),
+            "souMembro": sou_membro,
+            "souAdminDoGrupo": sou_admin_grupo,
+            "criadoEm": self.created_at.isoformat() if self.created_at else None,
+        }
+
+    def __repr__(self):
+        return f"<GrupoChat {self.id} {self.nome!r}>"
+
+
+class GrupoChatMembro(db.Model):
+    __tablename__ = "grupos_chat_membros"
+    __table_args__ = (db.UniqueConstraint("grupo_id", "user_id", name="uq_grupo_membro"),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    grupo_id = db.Column(db.Integer, db.ForeignKey("grupos_chat.id"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    papel = db.Column(db.String(20), nullable=False, default="membro")  # 'admin' | 'membro'
+    joined_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+
+    grupo = db.relationship("GrupoChat", back_populates="membros")
+    usuario = db.relationship("User", foreign_keys=[user_id])
+
+
+# ------------------------------------------------------------------
 # CHAT INTERNO (área pública, apenas usuários aprovados)
 # ------------------------------------------------------------------
 class ChatMessage(db.Model):
@@ -321,9 +380,10 @@ class ChatMessage(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)
-    # None = mensagem do chat geral (visível a todos). Preenchido = mensagem
-    # privada (visível só ao remetente e a este destinatário).
+    # Exatamente um dos dois abaixo preenchido identifica o "canal" da
+    # mensagem; os dois em branco = chat geral (visível a todos aprovados).
     destinatario_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, index=True)
+    grupo_id = db.Column(db.Integer, db.ForeignKey("grupos_chat.id"), nullable=True, index=True)
     conteudo = db.Column(db.Text, nullable=False)
 
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False, index=True)
@@ -331,6 +391,7 @@ class ChatMessage(db.Model):
 
     autor = db.relationship("User", foreign_keys=[user_id])
     destinatario = db.relationship("User", foreign_keys=[destinatario_id])
+    grupo = db.relationship("GrupoChat", foreign_keys=[grupo_id])
 
     def to_dict(self, current_user_id=None, is_admin=False):
         return {
@@ -340,6 +401,7 @@ class ChatMessage(db.Model):
             "autorFotoUrl": self.autor.foto_url if self.autor else None,
             "autorEhAdmin": bool(self.autor and self.autor.is_admin),
             "destinatarioId": self.destinatario_id,
+            "grupoId": self.grupo_id,
             "conteudo": self.conteudo,
             "criadoEm": self.created_at.isoformat() if self.created_at else None,
             "editado": self.editado_em is not None,

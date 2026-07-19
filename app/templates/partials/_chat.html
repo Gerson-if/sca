@@ -1,40 +1,78 @@
-                            <div class="bg-slate-900 rounded-2xl border border-slate-800 flex flex-col h-[560px] overflow-hidden shadow-lg relative">
+                            <div class="bg-slate-900 rounded-2xl border border-slate-800 flex flex-col h-[70vh] max-h-[560px] overflow-hidden shadow-lg relative">
                                 <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between gap-2.5 bg-gradient-to-r from-indigo-600/10 to-transparent">
                                     <div class="flex items-center gap-2.5 min-w-0">
-                                        <button x-show="chatConversaCom" @click="voltarParaChatGeral" class="p-2 -ml-1 text-slate-400 hover:text-slate-100 rounded-lg hover:bg-slate-800 transition-fast shrink-0" title="Voltar ao chat geral">
+                                        <button x-show="chatConversaCom || chatGrupoAtual" @click="voltarParaChatGeral" class="p-2 -ml-1 text-slate-400 hover:text-slate-100 rounded-lg hover:bg-slate-800 transition-fast shrink-0" title="Voltar ao chat geral">
                                             <i class="fa-solid fa-arrow-left"></i>
                                         </button>
-                                        <span class="w-9 h-9 rounded-xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center shrink-0 overflow-hidden">
-                                            <img x-show="chatConversaCom && chatConversaCom.fotoUrl" :src="chatConversaCom ? chatConversaCom.fotoUrl : ''" class="w-full h-full object-cover" />
-                                            <i x-show="!chatConversaCom" class="fa-solid fa-comments"></i>
-                                            <span x-show="chatConversaCom && !chatConversaCom.fotoUrl" x-text="iniciaisUsuario(chatConversaCom)"></span>
-                                        </span>
+
+                                        <template x-if="chatGrupoAtual">
+                                            <span class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" :class="corBadgeGrupo(chatGrupoAtual.cor)">
+                                                <i class="fa-solid" :class="chatGrupoAtual.icone"></i>
+                                            </span>
+                                        </template>
+                                        <template x-if="!chatGrupoAtual">
+                                            <span class="w-9 h-9 rounded-xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center shrink-0 overflow-hidden">
+                                                <img x-show="chatConversaCom && chatConversaCom.fotoUrl" :src="chatConversaCom ? chatConversaCom.fotoUrl : ''" class="w-full h-full object-cover" />
+                                                <i x-show="!chatConversaCom" class="fa-solid fa-comments"></i>
+                                                <span x-show="chatConversaCom && !chatConversaCom.fotoUrl" x-text="iniciaisUsuario(chatConversaCom)"></span>
+                                            </span>
+                                        </template>
+
                                         <div class="min-w-0">
-                                            <h3 class="font-bold text-slate-100 text-sm truncate" x-text="chatConversaCom ? (chatConversaCom.nome) : 'Chat Interno da Equipe'"></h3>
-                                            <p class="text-[11px] text-slate-500 flex items-center gap-1.5">
-                                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                                                <span x-text="chatConversaCom ? 'Conversa privada' : 'Sincronizado em tempo real'"></span>
+                                            <h3 class="font-bold text-slate-100 text-sm truncate" x-text="chatGrupoAtual ? chatGrupoAtual.nome : (chatConversaCom ? chatConversaCom.nome : 'Chat Interno da Equipe')"></h3>
+                                            <p class="text-[11px] text-slate-500 flex items-center gap-1.5 truncate">
+                                                <span x-show="!chatGrupoAtual" class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+                                                <span x-text="chatGrupoAtual ? (chatGrupoAtual.totalMembros + ' membro' + (chatGrupoAtual.totalMembros === 1 ? '' : 's')) : (chatConversaCom ? 'Conversa privada' : 'Sincronizado em tempo real')" class="truncate"></span>
                                             </p>
                                         </div>
                                     </div>
-                                    <div class="relative shrink-0">
-                                        <button @click="carregarUsuariosChat(); mostrarListaUsuariosChat = !mostrarListaUsuariosChat" class="p-2.5 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-xl transition-fast" title="Nova conversa privada">
-                                            <i class="fa-solid fa-user-plus"></i>
+
+                                    <div class="flex items-center gap-1 shrink-0">
+                                        <button x-show="chatGrupoAtual && chatGrupoAtual.souAdminDoGrupo" @click="abrirGerenciarMembros(chatGrupoAtual)" class="p-2.5 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-xl transition-fast" title="Gerenciar membros">
+                                            <i class="fa-solid fa-user-gear"></i>
                                         </button>
-                                        <div x-show="mostrarListaUsuariosChat" @click.outside="mostrarListaUsuariosChat = false"
-                                             x-transition class="absolute right-0 top-full mt-2 w-64 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-20 max-h-72 overflow-y-auto" style="display:none;">
-                                            <p class="text-[11px] font-bold uppercase tracking-wide text-slate-500 px-3 pt-3 pb-1">Iniciar conversa privada</p>
-                                            <template x-for="u in chatUsuarios" :key="u.id">
-                                                <button @click="iniciarConversaPrivada(u); mostrarListaUsuariosChat = false" class="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-slate-700/60 transition-fast text-left">
-                                                    <div class="w-7 h-7 rounded-lg overflow-hidden bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-300 shrink-0">
-                                                        <img x-show="u.fotoUrl" :src="u.fotoUrl" class="w-full h-full object-cover" />
-                                                        <span x-show="!u.fotoUrl" x-text="iniciaisUsuario(u)"></span>
-                                                    </div>
-                                                    <span class="text-sm text-slate-200 truncate" x-text="u.nome"></span>
-                                                    <span x-show="u.role === 'admin'" class="ml-auto text-[9px] font-bold uppercase text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded-full shrink-0">Admin</span>
-                                                </button>
-                                            </template>
-                                            <p x-show="chatUsuarios.length === 0" class="text-xs text-slate-500 text-center py-4">Nenhum outro usuário aprovado ainda.</p>
+                                        <button x-show="chatGrupoAtual && !chatGrupoAtual.souAdminDoGrupo" @click="sairDoGrupo(chatGrupoAtual)" class="p-2.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-fast" title="Sair do grupo">
+                                            <i class="fa-solid fa-right-from-bracket"></i>
+                                        </button>
+
+                                        <div class="relative">
+                                            <button x-show="!chatGrupoAtual && !chatConversaCom" @click="carregarUsuariosChat(); carregarGrupos(); mostrarListaUsuariosChat = !mostrarListaUsuariosChat" class="p-2.5 text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-xl transition-fast" title="Grupos e conversas privadas">
+                                                <i class="fa-solid fa-circle-plus"></i>
+                                            </button>
+                                            <div x-show="mostrarListaUsuariosChat" @click.outside="mostrarListaUsuariosChat = false"
+                                                 x-transition class="absolute right-0 top-full mt-2 w-72 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-20 max-h-80 overflow-y-auto" style="display:none;">
+
+                                                <div class="flex items-center justify-between px-3 pt-3 pb-1">
+                                                    <p class="text-[11px] font-bold uppercase tracking-wide text-slate-500">Grupos</p>
+                                                    <button @click="abrirModalNovoGrupo(); mostrarListaUsuariosChat = false" class="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+                                                        <i class="fa-solid fa-plus text-[9px]"></i> Criar
+                                                    </button>
+                                                </div>
+                                                <template x-for="g in chatGrupos" :key="'grp-' + g.id">
+                                                    <button @click="entrarNoGrupo(g); mostrarListaUsuariosChat = false" class="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-slate-700/60 transition-fast text-left">
+                                                        <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" :class="corBadgeGrupo(g.cor)">
+                                                            <i class="fa-solid text-xs" :class="g.icone"></i>
+                                                        </div>
+                                                        <span class="text-sm text-slate-200 truncate flex-1" x-text="g.nome"></span>
+                                                        <span class="text-[10px] text-slate-500 shrink-0" x-text="g.totalMembros"></span>
+                                                    </button>
+                                                </template>
+                                                <p x-show="chatGrupos.length === 0" class="text-xs text-slate-500 text-center py-3">Nenhum grupo ainda.</p>
+
+                                                <div class="border-t border-slate-700 mt-1"></div>
+                                                <p class="text-[11px] font-bold uppercase tracking-wide text-slate-500 px-3 pt-3 pb-1">Conversa Privada</p>
+                                                <template x-for="u in chatUsuarios" :key="u.id">
+                                                    <button @click="iniciarConversaPrivada(u); mostrarListaUsuariosChat = false" class="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-slate-700/60 transition-fast text-left">
+                                                        <div class="w-7 h-7 rounded-lg overflow-hidden bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-300 shrink-0">
+                                                            <img x-show="u.fotoUrl" :src="u.fotoUrl" class="w-full h-full object-cover" />
+                                                            <span x-show="!u.fotoUrl" x-text="iniciaisUsuario(u)"></span>
+                                                        </div>
+                                                        <span class="text-sm text-slate-200 truncate" x-text="u.nome"></span>
+                                                        <span x-show="u.role === 'admin'" class="ml-auto text-[9px] font-bold uppercase text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded-full shrink-0">Admin</span>
+                                                    </button>
+                                                </template>
+                                                <p x-show="chatUsuarios.length === 0" class="text-xs text-slate-500 text-center py-3">Nenhum outro usuário aprovado ainda.</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
