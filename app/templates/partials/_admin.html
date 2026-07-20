@@ -551,6 +551,64 @@
                                         </p>
                                     </div>
 
+                                    <!-- FUNDO DA TELA DE LOGIN — independente do fundo da página inicial acima -->
+                                    <div class="lg:col-span-2 space-y-4 pt-6 border-t border-slate-800">
+                                        <div>
+                                            <h3 class="text-sm font-bold text-slate-200">Fundo da Tela de Login</h3>
+                                            <p class="text-xs text-slate-500 mt-0.5">
+                                                Tela de entrar/cadastrar-se. Pode ser diferente do fundo da página inicial.
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <div class="flex bg-slate-800 border border-slate-700 p-1.5 rounded-xl text-xs w-max">
+                                                <button type="button" @click="configForm.tipoFundoLogin = 'nenhum'" class="px-3 py-1.5 rounded-lg font-semibold transition-fast" :class="configForm.tipoFundoLogin === 'nenhum' ? 'bg-slate-700 text-slate-100' : 'text-slate-500'">Nenhum</button>
+                                                <button type="button" @click="configForm.tipoFundoLogin = 'imagem'" class="px-3 py-1.5 rounded-lg font-semibold transition-fast" :class="configForm.tipoFundoLogin === 'imagem' ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-500'">Imagem</button>
+                                                <button type="button" @click="configForm.tipoFundoLogin = 'video'" class="px-3 py-1.5 rounded-lg font-semibold transition-fast" :class="configForm.tipoFundoLogin === 'video' ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-500'">Vídeo Animado</button>
+                                            </div>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <template x-if="configForm.tipoFundoLogin === 'imagem'">
+                                                <div class="space-y-2">
+                                                    <div class="relative w-full h-36 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex items-center justify-center group">
+                                                        <img x-show="configForm.imagemFundoLoginUrl" :src="configForm.imagemFundoLoginUrl" class="w-full h-full object-cover" />
+                                                        <i x-show="!configForm.imagemFundoLoginUrl" class="fa-solid fa-panorama text-3xl text-slate-600"></i>
+                                                        <button type="button" x-show="configForm.imagemFundoLoginUrl" @click="removerImagemFundoLogin()"
+                                                            class="absolute top-2 right-2 w-8 h-8 rounded-lg bg-slate-950/80 border border-slate-700 opacity-0 group-hover:opacity-100 transition-fast flex items-center justify-center text-rose-400 hover:text-rose-300 hover:border-rose-500/50"
+                                                            title="Remover imagem de fundo do login">
+                                                            <i class="fa-solid fa-trash-can text-xs"></i>
+                                                        </button>
+                                                    </div>
+                                                    <input type="file" accept="image/png,image/jpeg,image/webp" @change="enviarImagemFundoLogin($event)"
+                                                        class="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 file:cursor-pointer cursor-pointer" />
+                                                    <p class="text-[11px] text-slate-500">Otimizada e redimensionada automaticamente ao enviar.</p>
+                                                </div>
+                                            </template>
+
+                                            <template x-if="configForm.tipoFundoLogin === 'video'">
+                                                <div class="space-y-2">
+                                                    <div class="relative w-full h-36 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 flex items-center justify-center group">
+                                                        <video x-show="configForm.videoFundoLoginUrl" :src="configForm.videoFundoLoginUrl" autoplay muted loop playsinline class="w-full h-full object-cover"></video>
+                                                        <i x-show="!configForm.videoFundoLoginUrl" class="fa-solid fa-clapperboard text-3xl text-slate-600"></i>
+                                                        <button type="button" x-show="configForm.videoFundoLoginUrl" @click="removerVideoFundoLogin()"
+                                                            class="absolute top-2 right-2 w-8 h-8 rounded-lg bg-slate-950/80 border border-slate-700 opacity-0 group-hover:opacity-100 transition-fast flex items-center justify-center text-rose-400 hover:text-rose-300 hover:border-rose-500/50"
+                                                            title="Remover vídeo de fundo do login">
+                                                            <i class="fa-solid fa-trash-can text-xs"></i>
+                                                        </button>
+                                                    </div>
+                                                    <input type="file" accept="video/mp4,video/webm" @change="enviarVideoFundoLogin($event)"
+                                                        class="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 file:cursor-pointer cursor-pointer" />
+                                                    <p class="text-[11px] text-slate-500">Formatos aceitos: MP4 ou WebM, até 20 MB.</p>
+                                                </div>
+                                            </template>
+                                        </div>
+
+                                        <p x-show="enviandoMidiaSite" class="text-xs text-indigo-400 flex items-center gap-1.5">
+                                            <i class="fa-solid fa-spinner fa-spin"></i> Enviando arquivo...
+                                        </p>
+                                    </div>
+
                                     <div class="lg:col-span-2 flex items-center justify-between gap-4 pt-2 border-t border-slate-800">
                                         <p x-show="formErrorConfig" class="text-sm text-rose-400 flex items-center gap-1.5">
                                             <i class="fa-solid fa-circle-exclamation"></i> <span x-text="formErrorConfig"></span>

@@ -64,21 +64,19 @@ def _init_extensions(app: Flask) -> None:
     csrf.init_app(app)
     limiter.init_app(app)
 
-    # Flask-Talisman: cabeçalhos de segurança (CSP, HSTS, X-Frame-Options, etc.)
-    # O JS/CSS da aplicação agora vive em arquivos estáticos próprios
-    # (self), então não precisamos de 'unsafe-inline' para script-src.
-    # 'unsafe-eval' é necessário porque o Alpine.js avalia expressões dos
-    # atributos (x-show, x-text, etc.) usando `new Function(...)`.
+    # 'self' também no font-src/style-src/script-src: desde que os assets
+    # (Tailwind compilado, Alpine.js, Font Awesome, Inter/JetBrains Mono)
+    # passaram a ser self-hosted (ver frontend-build/ e app/templates/
+    # index.html), não há mais NENHUM domínio externo — nem
+    # cdn.tailwindcss.com, jsdelivr, cdnjs, nem fonts.googleapis.com — no
+    # caminho crítico de renderização. 'unsafe-eval' continua necessário
+    # porque o Alpine.js avalia expressões dos atributos (x-show, x-text,
+    # etc.) usando `new Function(...)`.
     csp = {
         "default-src": "'self'",
-        "script-src": [
-            "'self'",
-            "'unsafe-eval'",
-            "https://cdn.tailwindcss.com",
-            "https://cdn.jsdelivr.net",
-        ],
-        "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
-        "font-src": ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
+        "script-src": ["'self'", "'unsafe-eval'"],
+        "style-src": ["'self'", "'unsafe-inline'"],
+        "font-src": "'self'",
         "img-src": ["'self'", "data:"],
         "connect-src": "'self'",
     }
@@ -170,7 +168,18 @@ def _register_error_handlers(app: Flask) -> None:
     @app.errorhandler(CSRFError)
     def csrf_error(e):
         db.session.rollback()
-        return jsonify({"error": "Sessão expirada ou token de segurança inválido. Recarregue a página."}), 400
+        # "code" (além de "error") deixa o front-end (ver apiFetch em
+        # app/static/js/app.js) identificar programaticamente que este 400
+        # é especificamente um token CSRF vencido/ausente — e não qualquer
+        # outro erro de validação — para buscar um token novo e reenviar a
+        # MESMA requisição automaticamente, sem precisar de F5 nem incomodar
+        # a pessoa com a mensagem. A mensagem em texto continua aqui como
+        # respaldo, para o raríssimo caso de a segunda tentativa falhar de
+        # novo (ela então é mostrada normalmente).
+        return jsonify({
+            "error": "Sessão expirada ou token de segurança inválido. Recarregue a página.",
+            "code": "csrf_invalid",
+        }), 400
 
 
 def _register_security_headers(app: Flask) -> None:

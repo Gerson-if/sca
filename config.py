@@ -49,13 +49,11 @@ class Config:
     }
 
     # --- Flask-Login ---
-    # Estes valores só teriam efeito se algum login chamasse
-    # login_user(..., remember=True). Isso não acontece mais em nenhum lugar
-    # do código (ver app/auth/routes.py) — o recurso "manter conectado" foi
-    # removido por permitir que o cookie remember_token vazasse a sessão de
-    # quem logou por último para outro navegador/dispositivo/link
-    # compartilhado. Mantidos aqui apenas como valor seguro caso
-    # remember=True volte a ser usado no futuro.
+    # Usados quando a pessoa marca "Lembrar usuário e senha" no login (ver
+    # app/auth/routes.py: login_user(..., remember=data.lembrar)). Só é
+    # emitido quando ela pede explicitamente — nunca por padrão — então o
+    # risco de vazar sessão em navegador/link compartilhado fica sob
+    # controle de quem opta pelo recurso, não automático para todo mundo.
     REMEMBER_COOKIE_DURATION = timedelta(days=7)
     REMEMBER_COOKIE_HTTPONLY = True
     REMEMBER_COOKIE_SAMESITE = "Lax"
@@ -109,9 +107,19 @@ class Config:
 
 
 class TestingConfig(Config):
-    """Usada apenas por testes automatizados (pytest), se houver."""
+    """Usada apenas por testes automatizados (pytest)."""
 
     TESTING = True
     WTF_CSRF_ENABLED = False
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
+    # SQLite em memória usa StaticPool, que não aceita pool_size/
+    # max_overflow (opções específicas de pools de conexão "de verdade",
+    # como o do Postgres em produção — ver Config acima). Herdar
+    # SQLALCHEMY_ENGINE_OPTIONS sem sobrescrever isso quebra a criação do
+    # engine e impede QUALQUER teste automatizado de rodar.
+    SQLALCHEMY_ENGINE_OPTIONS = {}
     RATELIMIT_ENABLED = False
+    # Sessão do lado do servidor em memória, isolada por processo de teste
+    # — nada de deixar arquivos de sessão de teste no disco do projeto.
+    SESSION_TYPE = "filesystem"
+    SESSION_FILE_DIR = "/tmp/sca-flask-session-tests"

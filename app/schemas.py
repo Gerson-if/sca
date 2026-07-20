@@ -130,6 +130,9 @@ class AvisoIn(BaseModel):
 class LoginIn(BaseModel):
     username: str
     password: str
+    # Opt-in explícito da pessoa usuária (checkbox "Lembrar usuário e
+    # senha" no login) — ver app/auth/routes.py para o que isso ativa.
+    lembrar: bool = False
 
     @field_validator("username", "password")
     @classmethod
@@ -358,6 +361,9 @@ class ConfiguracaoSiteIn(BaseModel):
     tipoFundo: str = "nenhum"
     imagemFundoUrl: Optional[str] = None
     videoFundoUrl: Optional[str] = None
+    tipoFundoLogin: str = "nenhum"
+    imagemFundoLoginUrl: Optional[str] = None
+    videoFundoLoginUrl: Optional[str] = None
     logoUrl: Optional[str] = None
     corDestaque: Optional[str] = "#4f46e5"
 
@@ -385,7 +391,7 @@ class ConfiguracaoSiteIn(BaseModel):
             raise ValueError("Descrição muito longa (máx. 1000 caracteres).")
         return v or ""
 
-    @field_validator("tipoFundo")
+    @field_validator("tipoFundo", "tipoFundoLogin")
     @classmethod
     def tipo_fundo_valido(cls, v: str) -> str:
         if v not in ("nenhum", "imagem", "video"):

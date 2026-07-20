@@ -49,6 +49,23 @@ def registrar_guard_de_sessao(app):
             and sessao.revoked_at is None
             and str(sessao.user_id) == str(current_user.get_id())
         )
+
+        # Expiração por inatividade, verificada aqui de novo (independente
+        # do cookie/`session.permanent`): se o registro de sessão ficou
+        # `last_seen_at` mais velho que PERMANENT_SESSION_LIFETIME, a sessão
+        # é tratada como expirada mesmo que, por algum motivo, o cookie
+        # ainda pareça válido (relógio do navegador adiantado, cookie salvo
+        # manualmente, etc.). Mesma filosofia do resto deste arquivo: não
+        # confiar cegamente no que o cookie afirma.
+        if sessao_valida:
+            limite = app.config.get("PERMANENT_SESSION_LIFETIME")
+            ultimo_acesso = _as_aware(sessao.last_seen_at)
+            if limite is not None and ultimo_acesso is not None:
+                if (_utcnow() - ultimo_acesso) > limite:
+                    sessao.revoked_at = _utcnow()
+                    db.session.commit()
+                    sessao_valida = False
+
         if not sessao_valida:
             # O Flask-Login diz "autenticado", mas não existe um registro de
             # sessão correspondente (nunca existiu, foi revogado em outro

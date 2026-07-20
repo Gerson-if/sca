@@ -118,26 +118,31 @@ def login():
     # autenticar, forçando o Flask-Session a emitir um identificador novo.
     session.clear()
 
-    # REMOVIDO o "manter conectado" (sessão persistente / remember_token).
-    # Esse recurso emitia um cookie "remember_token" com validade de dias,
-    # suficiente para o Flask-Login reautenticar sozinho a PRÓXIMA pessoa
-    # que abrisse aquele navegador — ou que recebesse o link do projeto já
-    # com aquele cookie no navegador — sem digitar usuário/senha nenhum.
-    # Era exatamente a causa do "compartilhei o link e a pessoa caiu na
-    # minha sessão". Agora TODO login usa `remember=False` e
-    # `session.permanent = False`, incondicionalmente: nenhum remember_token
-    # é emitido, e o cookie de sessão dura apenas enquanto o navegador
-    # continuar aberto. Fechou o navegador (ou usou outro navegador/
-    # dispositivo/link), a sessão anterior não existe mais e é obrigatório
-    # logar de novo com usuário e senha corretos.
-    #
-    # Quem quiser não digitar a senha de novo pode usar o recurso nativo do
-    # PRÓPRIO navegador para lembrar usuário/senha (por isso os campos do
-    # formulário de login têm autocomplete="username"/"current-password") —
-    # isso é responsabilidade do navegador, não do sistema, e não cria um
-    # cookie de sessão de longa duração que possa vazar por um link.
-    login_user(user, remember=False)
-    session.permanent = False
+    # "Lembrar usuário e senha" (checkbox no login) — opt-in explícito da
+    # PRÓPRIA pessoa a cada login, nunca automático. O cookie
+    # "remember_token" só é emitido quando `data.lembrar` vier True nesta
+    # requisição específica; sem o checkbox marcado, o comportamento
+    # continua idêntico ao anterior (remember=False, nenhum cookie extra).
+    # Isso evita o problema original de "compartilhei o link e a pessoa
+    # caiu na minha sessão" (que exigia um remember_token emitido sem a
+    # pessoa pedir) sem abrir mão da conveniência para quem pede
+    # explicitamente para continuar conectado. Duração/segurança do cookie
+    # em REMEMBER_COOKIE_* (config.py): HttpOnly, SameSite=Lax, 7 dias.
+    login_user(user, remember=data.lembrar)
+
+    # `session.permanent = True` (junto de PERMANENT_SESSION_LIFETIME, ver
+    # config.py) é o que faz a sessão expirar por INATIVIDADE: com
+    # SESSION_REFRESH_EACH_REQUEST=True (padrão do Flask), a validade do
+    # cookie — e do registro correspondente no Flask-Session — é renovada a
+    # cada requisição, então ela só vence se a pessoa ficar
+    # PERMANENT_SESSION_LIFETIME sem fazer nenhuma requisição. Com
+    # `permanent = False` (valor anterior) o cookie vira um "session
+    # cookie" sem nenhum Max-Age: ele nunca expira sozinho enquanto a aba/
+    # navegador continuar aberto, nem depois de dias de inatividade — o
+    # oposto do requisito. Isso não reintroduz o problema do remember_token
+    # acima: aqui é só a validade do cookie de sessão comum, não um
+    # mecanismo de reautenticação automática sem senha.
+    session.permanent = True
 
     # Rotaciona o identificador de sessão do lado do servidor (não só o
     # conteúdo, que já foi limpo acima com session.clear()). Sem isso, um

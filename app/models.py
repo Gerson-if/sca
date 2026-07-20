@@ -528,6 +528,13 @@ class ConfiguracaoSite(db.Model):
     tipo_fundo = db.Column(db.Enum(TipoFundo), nullable=False, default=TipoFundo.nenhum)
     imagem_fundo_url = db.Column(db.String(255), nullable=True)
     video_fundo_url = db.Column(db.String(255), nullable=True)
+
+    # Fundo da TELA DE LOGIN — independente do fundo da landing page acima
+    # (a pessoa pode querer, por exemplo, uma imagem na página inicial e um
+    # vídeo diferente — ou nenhum — na tela de entrar/cadastrar).
+    tipo_fundo_login = db.Column(db.Enum(TipoFundo), nullable=False, default=TipoFundo.nenhum)
+    imagem_fundo_login_url = db.Column(db.String(255), nullable=True)
+    video_fundo_login_url = db.Column(db.String(255), nullable=True)
     logo_url = db.Column(db.String(255), nullable=True)
     cor_destaque = db.Column(db.String(7), nullable=False, default="#4f46e5")
 
@@ -559,6 +566,9 @@ class ConfiguracaoSite(db.Model):
             "tipoFundo": self.tipo_fundo.value,
             "imagemFundoUrl": self.imagem_fundo_url,
             "videoFundoUrl": self.video_fundo_url,
+            "tipoFundoLogin": self.tipo_fundo_login.value,
+            "imagemFundoLoginUrl": self.imagem_fundo_login_url,
+            "videoFundoLoginUrl": self.video_fundo_login_url,
             "logoUrl": self.logo_url,
             "corDestaque": self.cor_destaque,
         }

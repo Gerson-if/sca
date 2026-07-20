@@ -34,6 +34,9 @@ def atualizar_configuracao():
     config.tipo_fundo = TipoFundo(data.tipoFundo)
     config.imagem_fundo_url = data.imagemFundoUrl or None
     config.video_fundo_url = data.videoFundoUrl or None
+    config.tipo_fundo_login = TipoFundo(data.tipoFundoLogin)
+    config.imagem_fundo_login_url = data.imagemFundoLoginUrl or None
+    config.video_fundo_login_url = data.videoFundoLoginUrl or None
     config.logo_url = data.logoUrl or None
     config.cor_destaque = data.corDestaque
 

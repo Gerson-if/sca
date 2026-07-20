@@ -92,6 +92,36 @@ toast, confirmação) vive em seu próprio arquivo dentro de
 `{% include %}`. CSS e JavaScript também saíram do HTML e viraram
 arquivos próprios em `app/static/`.
 
+## Build de assets do front-end (`frontend-build/`)
+
+Os arquivos em `app/static/css/tailwind.css`, `app/static/js/vendor/`,
+`app/static/vendor/fontawesome/` e `app/static/fonts/` **já vêm prontos
+no repositório** — não é preciso rodar nada para simplesmente subir o
+projeto (`setup.sh`/deploy funcionam normalmente sem Node instalado).
+
+Esses arquivos existem para que o app não dependa de CDNs de terceiros
+em tempo de execução (antes: `cdn.tailwindcss.com`, `cdn.jsdelivr.net`,
+`cdnjs.cloudflare.com`, `fonts.googleapis.com`) — o pior caso sendo o
+Tailwind via CDN, que embarca o compilador inteiro no navegador e
+recompila todo o CSS a cada carregamento de página. Agora tudo é servido
+localmente pelo próprio Flask: mesmo domínio, cacheável, sem esperar
+terceiros nem recompilar nada no navegador de quem acessa.
+
+Só é preciso rodar o build de novo quando você **mudar classes Tailwind**
+nos arquivos em `app/templates/` ou `app/static/js/app.js` (ex.: usar uma
+cor/tamanho que ainda não aparecia em nenhum template — o Tailwind só
+inclui no CSS final as classes que encontra no código). Requer Node.js:
+
+```bash
+cd frontend-build
+npm install   # só na primeira vez
+npm run build
+```
+
+Isso recompila `tailwind.css` e recopia Alpine.js/Font Awesome/fontes
+para `app/static/`. Depois é só commitar os arquivos atualizados junto
+com a mudança de template.
+
 ## Modelo de dados
 
 - **User**: `username`, `password_hash`, `role` (admin/usuario), `status`

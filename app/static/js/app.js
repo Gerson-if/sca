@@ -22,6 +22,36 @@ async function apiFetch(path, options = {}) {
     let body = null;
     try { body = await resp.json(); } catch (e) { /* sem corpo JSON */ }
     if (!resp.ok) {
+        // Token CSRF vencido/ausente (ver o errorhandler(CSRFError) em
+        // app/__init__.py, que marca esse caso com "code": "csrf_invalid"):
+        // em vez de estourar o erro "recarregue a página" pra pessoa, busca
+        // um token novo e reenvia esta MESMA requisição automaticamente,
+        // uma única vez (options._csrfRetry evita loop se a segunda
+        // tentativa falhar de novo por outro motivo). Isso resolve de vez
+        // os "erros de token" sem precisar trocar de tecnologia: o
+        // problema nunca foi o CSRF em si, era não reagir sozinho quando
+        // ele expira.
+        if (body && body.code === 'csrf_invalid' && !options._csrfRetry) {
+            try {
+                const fresh = await apiFetch('/auth/csrf-token');
+                window.__csrfToken = fresh.csrfToken;
+                return apiFetch(path, { ...options, _csrfRetry: true });
+            } catch (e) { /* segue pro tratamento de erro normal abaixo */ }
+        }
+        // 401 em QUALQUER chamada (fora /auth/login e /auth/me, que tratam
+        // "sem sessão" como resultado normal, não como erro) significa que
+        // o backend deixou de considerar a sessão válida no meio do uso —
+        // por inatividade, logout em outra aba, revogação pelo admin, etc.
+        // (ver app/auth/guard.py). Sem isso, cada chamada em segundo plano
+        // (ex.: o polling de sincronização) falhava silenciosamente e a
+        // pessoa só percebia ao tentar clicar em algo, exatamente os
+        // sintomas de "loop de login" / "preciso atualizar a página" que
+        // este projeto corrige: agora a UI reage no primeiro 401 e volta
+        // para a tela de login sozinha, sem precisar de F5.
+        if (resp.status === 401 && path !== '/auth/login' && path !== '/auth/me'
+            && typeof window.__onSessaoExpirada === 'function') {
+            window.__onSessaoExpirada();
+        }
         const msg = (body && body.error) || 'Ocorreu um erro inesperado. Tente novamente.';
         const erro = new Error(msg);
         erro.httpStatus = resp.status;
@@ -33,7 +63,7 @@ async function apiFetch(path, options = {}) {
 
 // Upload multipart (não usa JSON.stringify nem Content-Type manual: o
 // browser define o boundary do multipart automaticamente).
-async function apiUpload(path, formData) {
+async function apiUpload(path, formData, _csrfRetry = false) {
     const resp = await fetch(API_BASE + path, {
         method: 'POST',
         credentials: 'same-origin',
@@ -43,6 +73,15 @@ async function apiUpload(path, formData) {
     let body = null;
     try { body = await resp.json(); } catch (e) { /* sem corpo JSON */ }
     if (!resp.ok) {
+        // Mesma lógica de auto-retry do apiFetch (ver comentário lá):
+        // token CSRF vencido busca um novo e reenvia sozinho, uma vez.
+        if (body && body.code === 'csrf_invalid' && !_csrfRetry) {
+            try {
+                const fresh = await apiFetch('/auth/csrf-token');
+                window.__csrfToken = fresh.csrfToken;
+                return apiUpload(path, formData, true);
+            } catch (e) { /* segue pro erro normal abaixo */ }
+        }
         const msg = (body && body.error) || 'Falha ao enviar arquivo.';
         throw new Error(msg);
     }
@@ -80,6 +119,15 @@ function app() {
         loginUser: '',
         loginPass: '',
         loginError: '',
+        // "Lembrar usuário e senha": o usuário (não sensível) fica salvo em
+        // localStorage para pré-preencher o campo da próxima vez. A SENHA
+        // nunca é guardada aqui — isso é papel do gerenciador de senhas do
+        // próprio navegador (por isso os campos mantêm
+        // autocomplete="username"/"current-password"). Quando marcado,
+        // também pedimos ao backend um cookie "lembrar-me" (remember_token,
+        // ver app/auth/routes.py) para a pessoa não precisar logar de novo
+        // por alguns dias.
+        loginLembrar: false,
         // Trava contra duplo-clique/duplo-envio do formulário: sem isso,
         // duas chamadas de /auth/login concorrentes usam o MESMO token CSRF
         // (obtido uma vez ao carregar a página); a primeira que responde já
@@ -111,10 +159,13 @@ function app() {
             tipoFundo: 'nenhum',
             imagemFundoUrl: null,
             videoFundoUrl: null,
+            tipoFundoLogin: 'nenhum',
+            imagemFundoLoginUrl: null,
+            videoFundoLoginUrl: null,
             logoUrl: null,
             corDestaque: '#4f46e5'
         },
-        configForm: { nomeEmpresa: '', slogan: '', descricao: '', tipoFundo: 'nenhum', imagemFundoUrl: '', videoFundoUrl: '', logoUrl: '', corDestaque: '#4f46e5' },
+        configForm: { nomeEmpresa: '', slogan: '', descricao: '', tipoFundo: 'nenhum', imagemFundoUrl: '', videoFundoUrl: '', tipoFundoLogin: 'nenhum', imagemFundoLoginUrl: '', videoFundoLoginUrl: '', logoUrl: '', corDestaque: '#4f46e5' },
         formErrorConfig: '',
         enviandoMidiaSite: false,
 
@@ -274,6 +325,20 @@ function app() {
             // Antes até de saber se há sessão: aplica um tema "de visitante"
             // salvo localmente, pra não piscar claro->escuro na tela de login.
             this.aplicarTema(localStorage.getItem('sca_tema_visitante') || 'escuro');
+
+            // "Lembrar usuário e senha": pré-preenche só o usuário (ver
+            // comentário na declaração de loginLembrar acima).
+            const usuarioLembrado = localStorage.getItem('sca_usuario_lembrado');
+            if (usuarioLembrado) {
+                this.loginUser = usuarioLembrado;
+                this.loginLembrar = true;
+            }
+
+            // Ver apiFetch() em '/auth/*': qualquer 401 inesperado (sessão
+            // expirou por inatividade, foi revogada pelo admin, ou foi
+            // encerrada em outra aba) chama isto para voltar à tela de
+            // login imediatamente, sem exigir recarregar a página.
+            window.__onSessaoExpirada = () => this.tratarSessaoExpirada();
 
             await this.obterCsrfToken();
             await this.carregarConfiguracaoSite();
@@ -478,12 +543,22 @@ function app() {
                     body: JSON.stringify({
                         username: this.loginUser,
                         password: this.loginPass,
+                        lembrar: this.loginLembrar,
                     }),
                 });
                 // A sessão foi recriada no backend (mitigação de fixação de
                 // sessão); o token de CSRF antigo não vale mais — usamos o
                 // novo que já vem na resposta do login.
                 if (resp.csrfToken) window.__csrfToken = resp.csrfToken;
+
+                // Guarda/limpa o usuário lembrado de acordo com o checkbox
+                // (a senha em si nunca é guardada aqui — ver declaração de
+                // loginLembrar).
+                if (this.loginLembrar) {
+                    localStorage.setItem('sca_usuario_lembrado', this.loginUser.trim());
+                } else {
+                    localStorage.removeItem('sca_usuario_lembrado');
+                }
 
                 this.loggedIn = true;
                 this.usuarioAtual = resp.user;
@@ -549,7 +624,9 @@ function app() {
             this.usuarioAtual = { id: null, username: '', nome: '', fotoUrl: null, tema: 'escuro', role: '', status: '' };
             this.contaPendente = false;
             this.contaReprovada = false;
-            this.loginUser = '';
+            // Mantém o usuário preenchido se "lembrar" estava marcado (mais
+            // conveniente para reentrar); só limpa se não estava.
+            this.loginUser = this.loginLembrar ? this.loginUser : '';
             this.loginPass = '';
             this.page = 'landing';
             this.cidades = [];
@@ -560,6 +637,33 @@ function app() {
             // tema pessoal de quem acabou de sair aplicado num computador
             // compartilhado para a próxima pessoa que abrir o navegador.
             this.aplicarTema('escuro');
+        },
+
+        // Chamado quando o backend responde 401 a uma chamada autenticada
+        // fora do fluxo normal de login (ver apiFetch): a sessão deixou de
+        // ser válida (inatividade, revogação pelo admin, logout feito em
+        // outra aba). Idempotente — se várias chamadas em paralelo levarem
+        // 401 ao mesmo tempo (ex.: o polling de sync e uma ação manual),
+        // só reage na primeira, sem repetir o toast nem tentar
+        // '/auth/logout' de novo (a sessão do lado do servidor já não
+        // existe mais; chamar de novo só geraria outro 401).
+        tratarSessaoExpirada() {
+            if (!this.loggedIn) return;
+            this.loggedIn = false;
+            this.usuarioAtual = { id: null, username: '', nome: '', fotoUrl: null, tema: 'escuro', role: '', status: '' };
+            this.contaPendente = false;
+            this.contaReprovada = false;
+            this.loginPass = '';
+            this.page = 'landing';
+            this.cidades = [];
+            this.avisos = [];
+            this.chatMensagens = [];
+            this.sessoesAtivas = [];
+            this.aplicarTema('escuro');
+            // Busca um CSRF token novo para o próximo login funcionar de
+            // primeira (o anterior morreu junto com a sessão no servidor).
+            this.obterCsrfToken();
+            this.notificar('Sua sessão expirou. Faça login novamente.', 'erro');
         },
 
         // Sai das telas de "aguardando aprovação"/"reprovado" — nenhuma
@@ -939,6 +1043,44 @@ function app() {
             }
         },
 
+        // Mesmos handlers acima, só que para o fundo da TELA DE LOGIN
+        // (campos *FundoLogin*, independentes do fundo da landing page).
+        async enviarImagemFundoLogin(evento) {
+            const arquivo = evento.target.files[0];
+            if (!arquivo) return;
+            this.enviandoMidiaSite = true;
+            try {
+                const formData = new FormData();
+                formData.append('arquivo', arquivo);
+                const resp = await apiUpload('/uploads/imagem', formData);
+                this.configForm.imagemFundoLoginUrl = resp.url;
+                this.notificar('Imagem de fundo do login enviada e otimizada com sucesso.', 'sucesso');
+            } catch (e) {
+                this.notificar(e.message, 'erro');
+            } finally {
+                this.enviandoMidiaSite = false;
+                evento.target.value = '';
+            }
+        },
+
+        async enviarVideoFundoLogin(evento) {
+            const arquivo = evento.target.files[0];
+            if (!arquivo) return;
+            this.enviandoMidiaSite = true;
+            try {
+                const formData = new FormData();
+                formData.append('arquivo', arquivo);
+                const resp = await apiUpload('/uploads/video', formData);
+                this.configForm.videoFundoLoginUrl = resp.url;
+                this.notificar('Vídeo de fundo do login enviado com sucesso.', 'sucesso');
+            } catch (e) {
+                this.notificar(e.message, 'erro');
+            } finally {
+                this.enviandoMidiaSite = false;
+                evento.target.value = '';
+            }
+        },
+
         // Os arquivos já enviados (logo/fundo/vídeo) só podiam ser
         // substituídos por um novo upload — não havia como limpar e voltar
         // ao estado "sem mídia". Estes métodos apenas limpam a referência
@@ -955,6 +1097,14 @@ function app() {
         removerVideoFundoSite() {
             this.configForm.videoFundoUrl = '';
             this.notificar('Vídeo removido. Clique em "Salvar" para confirmar.', 'aviso');
+        },
+        removerImagemFundoLogin() {
+            this.configForm.imagemFundoLoginUrl = '';
+            this.notificar('Imagem de fundo do login removida. Clique em "Salvar" para confirmar.', 'aviso');
+        },
+        removerVideoFundoLogin() {
+            this.configForm.videoFundoLoginUrl = '';
+            this.notificar('Vídeo de fundo do login removido. Clique em "Salvar" para confirmar.', 'aviso');
         },
 
         async salvarConfiguracaoSite() {

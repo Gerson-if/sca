@@ -1,0 +1,16 @@
+{
+  "name": "sca-assets-build",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Build local (npm) dos assets de front-end do SCA — gera CSS/JS/fonts estáticos em app/static, eliminando as dependências de CDN em runtime (cdn.tailwindcss.com, jsdelivr, cdnjs, fonts.googleapis.com).",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "devDependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@fortawesome/fontawesome-free": "^7.3.1",
+    "alpinejs": "^3.15.12",
+    "tailwindcss": "^3.4.19"
+  }
+}

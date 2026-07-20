@@ -1,6 +1,25 @@
         <template x-if="page === 'login'">
             <div class="min-h-screen w-full flex items-center justify-center bg-slate-950 p-4 relative overflow-hidden">
-                <div class="absolute inset-0 opacity-40" style="background-image: radial-gradient(circle at 15% 20%, rgba(99,102,241,0.15), transparent 40%), radial-gradient(circle at 85% 80%, rgba(59,130,246,0.12), transparent 40%);"></div>
+                <!-- ===== FUNDO (imagem, vídeo ou gradiente padrão) — configurável pelo admin, independente do fundo da página inicial ===== -->
+                <div class="absolute inset-0 z-0">
+                    <video
+                        x-show="configuracaoSite.tipoFundoLogin === 'video' && configuracaoSite.videoFundoLoginUrl"
+                        :src="configuracaoSite.videoFundoLoginUrl"
+                        autoplay muted loop playsinline
+                        class="w-full h-full object-cover"
+                    ></video>
+                    <img
+                        x-show="configuracaoSite.tipoFundoLogin === 'imagem' && configuracaoSite.imagemFundoLoginUrl"
+                        :src="configuracaoSite.imagemFundoLoginUrl"
+                        class="w-full h-full object-cover"
+                    />
+                    <div
+                        x-show="configuracaoSite.tipoFundoLogin === 'nenhum' || (configuracaoSite.tipoFundoLogin === 'imagem' && !configuracaoSite.imagemFundoLoginUrl) || (configuracaoSite.tipoFundoLogin === 'video' && !configuracaoSite.videoFundoLoginUrl)"
+                        class="w-full h-full bg-slate-950"
+                    ></div>
+                    <div class="absolute inset-0 bg-slate-950/75"></div>
+                    <div class="absolute inset-0 opacity-40" style="background-image: radial-gradient(circle at 15% 20%, rgba(99,102,241,0.15), transparent 40%), radial-gradient(circle at 85% 80%, rgba(59,130,246,0.12), transparent 40%);"></div>
+                </div>
 
                 <div class="w-full max-w-md z-10 fade-in">
 
@@ -108,10 +127,14 @@
                                         </div>
                                     </div>
 
-                                    <p class="text-[11px] text-slate-500 leading-relaxed">
-                                        <i class="fa-solid fa-circle-info mr-1"></i>
-                                        Por segurança, a sessão encerra automaticamente ao fechar o navegador. Para não digitar a senha toda vez, use a opção de <span class="text-slate-400 font-medium">salvar usuário e senha</span> que o seu navegador oferece ao entrar.
-                                    </p>
+                                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            x-model="loginLembrar"
+                                            class="w-4 h-4 rounded border-slate-700 bg-slate-800/60 text-indigo-600 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-0"
+                                        />
+                                        <span class="text-sm text-slate-400">Lembrar usuário e senha</span>
+                                    </label>
 
                                     <template x-if="loginError">
                                         <div class="flex items-center gap-2 text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl px-3.5 py-2.5 text-sm">
