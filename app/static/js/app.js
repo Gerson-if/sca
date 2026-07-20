@@ -196,7 +196,13 @@ function app() {
             { chave: 'mensagemAutomatica', label: 'Mensagem Automática (rodapé)', icone: 'fa-robot' },
         ],
         rotulosCardsForm: {},
-        estiloCardsForm: {},
+        // Precisa nascer com `campos: []` (não `{}`) porque o template usa
+        // `estiloCardsForm.campos` direto em x-for/x-if/x-show (linhas com
+        // ".campos.length", ".campos.includes(...)" etc.) — o Alpine avalia
+        // essas expressões assim que a página carrega, mesmo com a aba
+        // "Cards" ainda fechada, então sem o array aqui já dava erro no
+        // console para qualquer admin, antes mesmo de abrir a aba.
+        estiloCardsForm: { campos: [] },
         salvandoPersonalizacao: false,
         formErrorPersonalizacao: '',
 
@@ -356,12 +362,15 @@ function app() {
                 else this.retomarCarrossel();
             });
 
-            // Chat: consulta a cada 4s enquanto o chat flutuante está aberto.
+            // Chat: consulta a cada 2s enquanto o chat flutuante está aberto.
+            // A rota /chat/mensagens aceita 90 req/min (ver app/api/chat.py),
+            // então 2s (30 req/min) tem folga confortável e reduz pela
+            // metade o atraso percebido ao receber mensagens novas.
             this.chatTimer = setInterval(() => {
                 if (this.podeVerAreaPublica() && this.chatFlutuanteAberto) {
                     this.carregarChat(true);
                 }
-            }, 4000);
+            }, 2000);
 
             setInterval(() => {
                 if (this.podeVerAreaPublica()) {
@@ -373,8 +382,10 @@ function app() {
             // pergunta ao servidor "algo mudou?" e, se sim, recarrega só a
             // seção afetada e avisa a pessoa (toast + notificação do
             // navegador, se permitida). Ver app/api/sync.py para o porquê
-            // de ser polling em vez de WebSocket.
-            this.syncTimer = setInterval(() => this.verificarSincronizacao(), 6000);
+            // de ser polling em vez de WebSocket. /sync aceita 40 req/min,
+            // então 3s (20 req/min) tem folga e reduz o atraso de
+            // notificação de ~6s para ~3s sem risco de esbarrar no limite.
+            this.syncTimer = setInterval(() => this.verificarSincronizacao(), 3000);
         },
 
         // -------------------- INTEGRAÇÃO COM A API --------------------
@@ -1570,7 +1581,14 @@ function app() {
             if (!conteudo || this.enviandoMensagemChat) return;
             this.enviandoMensagemChat = true;
             try {
-                await apiFetch('/chat/mensagens', {
+                // A resposta do POST já traz a mensagem criada (com id,
+                // autor, timestamp etc.) — usamos ela direto em vez de
+                // fazer um novo GET /chat/mensagens só para re-buscar a
+                // lista inteira de novo. Antes eram 3 requisições em série
+                // (POST -> GET lista completa -> GET /sync) para uma única
+                // mensagem enviada; isso é o que fazia o envio parecer
+                // lento, especialmente em conversas com histórico grande.
+                const mensagem = await apiFetch('/chat/mensagens', {
                     method: 'POST',
                     body: JSON.stringify({
                         conteudo,
@@ -1579,13 +1597,20 @@ function app() {
                     }),
                 });
                 this.novaMensagemChat = '';
-                await this.carregarChat();
+                this.chatMensagens.push(mensagem);
+                this.$nextTick(() => {
+                    if (this.$refs.chatScroll) {
+                        this.$refs.chatScroll.scrollTop = this.$refs.chatScroll.scrollHeight;
+                    }
+                });
                 // O back-end (/api/sync) ja exclui as proprias mensagens do
                 // usuario logado ao calcular o marcador de chat, entao o
-                // autor nunca e notificado da propria mensagem. Ainda assim
-                // atualizamos o marcador aqui para refletir de imediato o
-                // envio (evita um round-trip a mais no proximo polling).
-                await this.atualizarMarcadoresSync();
+                // autor nunca e notificado da propria mensagem. Atualizamos
+                // o marcador em segundo plano (sem await) so para refletir
+                // de imediato o envio e evitar um round-trip a mais no
+                // proximo polling — isso nao precisa bloquear a UI, o envio
+                // ja terminou do ponto de vista de quem esta digitando.
+                this.atualizarMarcadoresSync();
             } catch (e) {
                 this.notificar(e.message, 'erro');
             } finally {

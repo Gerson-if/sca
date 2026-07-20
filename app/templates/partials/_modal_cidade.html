@@ -1,8 +1,8 @@
-                <div x-show="modalCidadeAberta" class="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" style="display: none;">
+                <div x-show="modalCidadeAberta" class="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-2 sm:p-4 py-6 sm:py-8 overflow-y-auto" style="display: none;">
                     <div @click="fecharModalCidade" class="fixed inset-0 bg-slate-950/80"></div>
 
-                    <div class="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 w-full max-w-2xl overflow-hidden relative z-10">
-                        <div class="bg-slate-900 px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+                    <div class="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 w-full max-w-2xl max-h-[calc(100vh-3rem)] sm:max-h-[90vh] flex flex-col relative z-10">
+                        <div class="bg-slate-900 px-4 sm:px-6 py-4 border-b border-slate-800 flex items-center justify-between rounded-t-2xl shrink-0">
                             <div class="flex items-center gap-2">
                                 <span class="p-2 rounded-lg text-blue-400 bg-blue-500/10"><i class="fa-solid" :class="editandoCidade ? 'fa-pen-to-square' : 'fa-plus'"></i></span>
                                 <h2 class="text-lg font-bold text-slate-100" x-text="editandoCidade ? 'Editar Informações da Cidade' : 'Cadastrar Nova Cidade'"></h2>
@@ -10,7 +10,7 @@
                             <button @click="fecharModalCidade" class="text-slate-500 hover:text-slate-300 transition-fast"><i class="fa-solid fa-xmark text-lg"></i></button>
                         </div>
 
-                        <form @submit.prevent="salvarCidade" class="p-6 overflow-y-auto max-h-[75vh]">
+                        <form @submit.prevent="salvarCidade" class="p-4 sm:p-6 overflow-y-auto min-h-0">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 <!-- IMAGEM DA CIDADE -->
                                 <div class="col-span-1 md:col-span-2">

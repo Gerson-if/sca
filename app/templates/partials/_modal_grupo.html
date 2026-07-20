@@ -1,8 +1,8 @@
-                <div x-show="modalNovoGrupoAberto" class="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" style="display: none;">
+                <div x-show="modalNovoGrupoAberto" class="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-2 sm:p-4 py-6 sm:py-8 overflow-y-auto" style="display: none;">
                     <div @click="fecharModalNovoGrupo" class="fixed inset-0 bg-slate-950/80"></div>
 
-                    <div class="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 w-full max-w-lg overflow-hidden relative z-10">
-                        <div class="bg-slate-900 px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+                    <div class="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 w-full max-w-lg max-h-[calc(100vh-3rem)] sm:max-h-[90vh] flex flex-col relative z-10">
+                        <div class="bg-slate-900 px-4 sm:px-6 py-4 border-b border-slate-800 flex items-center justify-between rounded-t-2xl shrink-0">
                             <div class="flex items-center gap-2">
                                 <span class="p-2 rounded-lg text-indigo-400 bg-indigo-500/10"><i class="fa-solid fa-hashtag"></i></span>
                                 <h2 class="text-lg font-bold text-slate-100" x-text="editandoGrupoId ? 'Editar Grupo' : 'Criar Novo Grupo'"></h2>
@@ -10,7 +10,7 @@
                             <button @click="fecharModalNovoGrupo" class="text-slate-500 hover:text-slate-300 transition-fast"><i class="fa-solid fa-xmark text-lg"></i></button>
                         </div>
 
-                        <form @submit.prevent="salvarGrupo" class="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+                        <form @submit.prevent="salvarGrupo" class="p-4 sm:p-6 space-y-5 overflow-y-auto min-h-0">
                             <!-- PRÉVIA DO BADGE -->
                             <div class="flex items-center gap-3 bg-slate-950 border border-slate-800 rounded-xl p-3">
                                 <span class="w-11 h-11 rounded-xl flex items-center justify-center text-lg shrink-0" :class="corBadgeGrupo(novoGrupoForm.cor)">

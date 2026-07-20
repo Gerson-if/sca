@@ -1,9 +1,9 @@
-                <div x-show="detalheCidadeAberto" class="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" style="display: none;">
+                <div x-show="detalheCidadeAberto" class="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-2 sm:p-4 py-6 sm:py-8 overflow-y-auto" style="display: none;">
                     <div @click="fecharDetalheCidade" class="fixed inset-0 bg-slate-950/80"></div>
 
                     <template x-if="cidadeDetalhe">
-                        <div class="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 w-full max-w-xl overflow-hidden relative z-10">
-                            <div class="relative h-40 bg-slate-800">
+                        <div class="bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 w-full max-w-xl max-h-[calc(100vh-3rem)] sm:max-h-[90vh] flex flex-col relative z-10 overflow-hidden">
+                            <div class="relative h-40 bg-slate-800 shrink-0">
                                 <img x-show="cidadeDetalhe.imagemUrl" :src="cidadeDetalhe.imagemUrl" class="w-full h-full object-cover" />
                                 <div x-show="!cidadeDetalhe.imagemUrl" class="w-full h-full flex items-center justify-center text-slate-700">
                                     <i class="fa-solid fa-city text-5xl"></i>
@@ -20,7 +20,7 @@
                                 </div>
                             </div>
 
-                            <div class="p-6 space-y-4 max-h-[65vh] overflow-y-auto">
+                            <div class="p-4 sm:p-6 space-y-4 overflow-y-auto min-h-0 flex-1">
                                 <template x-for="campo in estiloCards.campos" :key="'campo-' + campo">
                                     <div>
                                         <!-- CLIMA -->
