@@ -269,7 +269,63 @@ Reverter a última migration: `flask db downgrade`.
 
 ## Deploy
 
-### Opção A — mais simples: PaaS com Procfile (Render, Railway, etc.)
+### Opção A — a mais simples para servidor próprio: instalador guiado (Ubuntu)
+
+Para quem tem (ou vai alugar) um servidor Ubuntu próprio e quer o caminho
+mais simples possível — sem editar Nginx, systemd, ou certificado SSL na
+mão — use os scripts `deploy.sh` e `update.sh` incluídos no projeto.
+
+```bash
+# No servidor Ubuntu, com o projeto já copiado/clonado, ex. em /var/www/sca:
+cd /var/www/sca
+sudo ./deploy.sh
+```
+
+O script pergunta, passo a passo:
+
+- **Domínio ou IP local**: se você tiver domínio (recomendado), ele emite
+  certificado SSL automaticamente; sem domínio, sobe em HTTP simples para
+  acesso só pela rede local/IP.
+- **Certificado SSL gratuito**: escolha entre **ZeroSSL** ou **Let's
+  Encrypt** — ambos gratuitos, sem cartão de crédito, com renovação
+  automática já configurada (você nunca precisa renovar manualmente).
+- **Banco de dados**: SQLite (padrão, zero configuração) ou PostgreSQL
+  (o script cria o banco e o usuário sozinho).
+- **Usuário administrador inicial**: escolha o usuário, e a senha pode ser
+  gerada automaticamente (mostrada só uma vez ao final, com recomendação
+  de trocar depois pelo próprio painel).
+
+A partir daí o script cuida sozinho de: instalar os pacotes do sistema
+(Python, Nginx, Postgres se escolhido, Certbot/acme.sh), criar um usuário
+de sistema dedicado (sem privilégios) para rodar a aplicação, montar o
+ambiente virtual e instalar as dependências, aplicar as migrations, criar
+e habilitar o serviço systemd, configurar o Nginx (com ou sem SSL),
+liberar só as portas necessárias no firewall (`ufw`) e mostrar um resumo
+final com a URL de acesso e as credenciais.
+
+É seguro rodar `sudo ./deploy.sh` de novo a qualquer momento (ex.: para
+trocar de domínio, ou ativar SSL depois de já estar rodando em IP) — as
+respostas anteriores ficam salvas em `deploy/.deploy.conf` e aparecem
+como sugestão.
+
+**Para atualizar depois de qualquer mudança no código:**
+
+```bash
+sudo ./update.sh
+```
+
+Isso faz backup do banco de dados, atualiza o código (`git pull`, se o
+projeto estiver em um repositório git) e as dependências, aplica as
+migrations pendentes, reinicia o serviço, e **confirma que a aplicação
+respondeu corretamente** (via `/healthz`) antes de considerar a
+atualização concluída. Se qualquer etapa falhar — inclusive se a
+aplicação não responder depois de reiniciar — o script **reverte
+sozinho** para o código e o banco de dados anteriores, sem deixar o site
+fora do ar. Um log de cada atualização fica em `update.log`, e os
+backups do banco em `backups/<data>/` (os 10 mais recentes são mantidos
+automaticamente).
+
+### Opção B — mais simples ainda: PaaS com Procfile (Render, Railway, etc.)
 
 O `Procfile` já está pronto:
 ```
@@ -294,7 +350,10 @@ defina também `TRUST_PROXY_HEADERS=true` (ver `.env.example`).
 > "cache tudo" que ignoram esse header — não ative esse tipo de
 > configuração aqui, ou sessões de usuários diferentes podem se misturar.
 
-### Opção B — servidor próprio (Gunicorn + Nginx)
+### Opção C — servidor próprio, passo a passo manual (Gunicorn + Nginx)
+
+> Use esta opção só se quiser entender/controlar cada passo manualmente.
+> Para o caminho guiado e automático em Ubuntu, veja a Opção A acima.
 
 ```bash
 pip install -r requirements.txt

@@ -1,0 +1,8 @@
+
+# Deploy (deploy.sh / update.sh)
+deploy/.deploy.conf
+.env
+.env.bak.*
+backups/
+update.log
+.venv/
