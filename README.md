@@ -556,3 +556,11 @@ flask seed-db          # popula cidades/avisos de exemplo (idempotente)
 flask db migrate -m "" # gera nova migration a partir dos models
 flask db upgrade       # aplica migrations pendentes
 ```
+
+## Licença
+
+Distribuído sob a licença MIT — veja o arquivo [LICENSE](LICENSE). Em
+resumo: uso, cópia, modificação e distribuição livres (inclusive
+comercial), **desde que o aviso de copyright e a permissão original
+sejam mantidos** em toda cópia ou parte substancial do software; o
+software é fornecido "como está", sem garantia de nenhum tipo.
